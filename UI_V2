@@ -149,9 +149,16 @@ function NovaUI:CreateWindow(cfg)
     local gui = self:_ensureGui()
     self.SaveConfig = cfg.SaveConfig or false
     
-    local defaultSize = cfg.Size or UDim2.new(0, 650, 0, 400)
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    if isMobile and cfg.MobileAutoSize ~= false then defaultSize = UDim2.new(0, 380, 0, 500) end
+    local defaultSizeX = cfg.Size and cfg.Size.X.Offset or 550
+    local defaultSizeY = cfg.Size and cfg.Size.Y.Offset or 380
+    local vp = workspace.CurrentCamera.ViewportSize
+    
+    -- Mobile Responsive Clamping
+    local clampedX = math.min(defaultSizeX, vp.X * 0.95 - 40)
+    local clampedY = math.min(defaultSizeY, vp.Y * 0.95 - 40)
+    local defaultSize = UDim2.new(0, clampedX, 0, clampedY)
+    
+    local sidebarWidth = clampedX < 450 and 120 or 160
 
     local shadow = create("ImageLabel", {
         Parent = gui,
@@ -203,18 +210,16 @@ function NovaUI:CreateWindow(cfg)
     applyStroke(closeBtn, self.Theme.Stroke, 1, 0.5)
 
     local sidebar = create("ScrollingFrame", {
-        Parent = root, BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 48), Size = UDim2.new(0, 160, 1, -60),
+        Parent = root, BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 48), Size = UDim2.new(0, sidebarWidth, 1, -60),
         ScrollBarThickness = 0, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
     create("UIListLayout", {Parent = sidebar, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder})
 
-    local contentHolder = create("Frame", {Parent = root, BackgroundTransparency = 1, Position = UDim2.new(0, 184, 0, 48), Size = UDim2.new(1, -196, 1, -60)})
+    local contentHolder = create("Frame", {Parent = root, BackgroundTransparency = 1, Position = UDim2.new(0, sidebarWidth + 20, 0, 48), Size = UDim2.new(1, -(sidebarWidth + 32), 1, -60)})
 
-    -- Toggle Logic Fixes
-    local minimized = false
     connect(minBtn.MouseButton1Click, function()
         minimized = not minimized
-        animate(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Size = minimized and UDim2.new(0, 650, 0, 48) + UDim2.new(0, 40, 0, 40) or defaultSize + UDim2.new(0, 40, 0, 40)})
+        animate(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Size = minimized and UDim2.new(0, clampedX, 0, 48) + UDim2.new(0, 40, 0, 40) or defaultSize + UDim2.new(0, 40, 0, 40)})
         contentHolder.Visible = not minimized
         sidebar.Visible = not minimized
     end)
@@ -398,7 +403,7 @@ function SectionMethods:AddDropdown(cfg)
     
     local title = create("TextLabel", {Parent = row, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0.5, 0, 1, 0), BackgroundTransparency = 1, Text = cfg.Name or "Dropdown", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
     local valLbl = create("TextLabel", {Parent = row, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -30, 1, 0), BackgroundTransparency = 1, Text = tostring(selected), Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Accent, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right})
-    local arrow = create("TextLabel", {Parent = row, Position = UDim2.new(1, -26, 0, 0), Size = UDim2.new(0, 26, 1, 0), BackgroundTransparency = 1, Text = "Ë…", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Muted, TextSize = 14})
+    local arrow = create("TextLabel", {Parent = row, Position = UDim2.new(1, -26, 0, 0), Size = UDim2.new(0, 26, 1, 0), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Muted, TextSize = 14})
     
     local ddlBase = create("Frame", {Parent = row, Position = UDim2.new(0, 0, 0, 42), Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1, ClipsDescendants = true})
     local listLayout = create("UIListLayout", {Parent = ddlBase, Padding = UDim.new(0, 4)})
@@ -406,7 +411,7 @@ function SectionMethods:AddDropdown(cfg)
     local open = false
     local function toggleMenu()
         open = not open
-        arrow.Text = open and "Ë„" or "Ë…"
+        arrow.Text = open and "^" or "v"
         animate(row, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Size = UDim2.new(1, 0, 0, open and (42 + (#options * 32)) or 38)})
         animate(ddlBase, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Size = UDim2.new(1, 0, 0, open and (#options * 32) or 0)})
     end
@@ -480,7 +485,7 @@ function SectionMethods:AddColorPicker(cfg)
     local selected = cfg.Default or palette[1]
     local row = makeRow(self.Holder, 42)
     
-    local title = create("TextLabel", {Parent = row, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0.4, 0, 1, 0), BackgroundTransparency = 1, Text = cfg.Name or "Color", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+    local title = create("TextLabel", {Parent = row, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(1, -160, 1, 0), BackgroundTransparency = 1, Text = cfg.Name or "Color", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
     local swatches = create("Frame", {Parent = row, Position = UDim2.new(1, -150, 0.5, -12), Size = UDim2.new(0, 140, 0, 24), BackgroundTransparency = 1})
     local list = create("UIListLayout", {Parent = swatches, Padding = UDim.new(0, 6), FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right})
     
