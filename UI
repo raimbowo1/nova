@@ -16,8 +16,12 @@
 --   Section:AddSlider({Name="Speed", Min=0, Max=100, Default=25, Increment=1, Callback=function(v) end})
 --   Section:AddDropdown({Name="Mode", Options={"A","B"}, Default="A", Callback=function(v) end})
 --   Section:AddTextbox({Name="Input", Placeholder="Type...", Callback=function(text) end})
+--   Section:AddBind({Name="Open Menu", Default=Enum.KeyCode.RightShift, Pressed=function(key) end})
+--   Section:AddColorPicker({Name="Accent", ApplyAccent=true, Callback=function(color) end})
 --   Section:AddParagraph({Title="Info", Content="Text here"})
 --   NovaUI:Notify({Title="Loaded", Content="NovaUI ready", Duration=4})
+--   NovaUI:SetTheme({Accent = Color3.fromRGB(150, 90, 255)})
+--   print(NovaUI:GetFlag("Enabled"))
 --   NovaUI:Init()
 
 local Players = game:GetService("Players")
@@ -49,7 +53,10 @@ local NovaUI = {
     MainFrame = nil,
     ToggleButton = nil,
     Hidden = false,
-    CurrentWindow = nil
+    CurrentWindow = nil,
+    ThemeObjects = {},
+    FlagSetters = {},
+    KeybindListeners = {}
 }
 
 local function connect(signal, fn)
@@ -196,6 +203,30 @@ local function saveFileAvailable()
     return writefile and readfile and isfile and makefolder and isfolder
 end
 
+local function applyThemeColor(obj, property, themeKey)
+    if obj and obj.Parent and NovaUI.Theme[themeKey] then
+        obj[property] = NovaUI.Theme[themeKey]
+    end
+end
+
+local function trackTheme(obj, property, themeKey)
+    table.insert(NovaUI.ThemeObjects, {
+        Object = obj,
+        Property = property,
+        ThemeKey = themeKey
+    })
+    applyThemeColor(obj, property, themeKey)
+end
+
+local function registerFlagSetter(flag, setter)
+    if not flag or type(setter) ~= "function" then return end
+    NovaUI.FlagSetters[flag] = setter
+end
+
+local function sanitizeConfigName(name)
+    return tostring(name or "default"):gsub("[^%w%-%._]", "_")
+end
+
 function NovaUI:_ensureGui()
     if self.ScreenGui and self.ScreenGui.Parent then
         return self.ScreenGui
@@ -315,7 +346,29 @@ function NovaUI:Toggle(force)
 end
 
 function NovaUI:SetAccent(color)
-    self.Theme.Accent = color
+    self:SetTheme({Accent = color})
+end
+
+function NovaUI:SetTheme(themePatch)
+    if type(themePatch) ~= "table" then return end
+    for k, v in pairs(themePatch) do
+        if self.Theme[k] ~= nil then
+            self.Theme[k] = v
+        end
+    end
+
+    for i = #self.ThemeObjects, 1, -1 do
+        local item = self.ThemeObjects[i]
+        if not item.Object or not item.Object.Parent then
+            table.remove(self.ThemeObjects, i)
+        else
+            applyThemeColor(item.Object, item.Property, item.ThemeKey)
+        end
+    end
+end
+
+function NovaUI:GetFlag(flag)
+    return self.Flags[flag]
 end
 
 function NovaUI:SetScale(scale)
@@ -330,6 +383,10 @@ local SectionMethods = {}
 
 function NovaUI:CreateWindow(cfg)
     cfg = cfg or {}
+    if self.CurrentWindow then
+        self:Destroy()
+        self:_ensureGui()
+    end
     self.SaveConfig = cfg.SaveConfig or false
     self.ConfigFolder = cfg.ConfigFolder or self.ConfigFolder
 
@@ -339,17 +396,27 @@ function NovaUI:CreateWindow(cfg)
 
     local gui = self:_ensureGui()
 
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    local defaultSize = cfg.Size or UDim2.new(0, 680, 0, 420)
+    if cfg.MobileSize then
+        defaultSize = cfg.MobileSize
+    elseif cfg.MobileAutoSize ~= false and isMobile then
+        defaultSize = UDim2.new(0, 360, 0, 460)
+    end
+
     local root = create("Frame", {
         Parent = gui,
         Name = "MainWindow",
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = cfg.Position or UDim2.new(0.5, 0, 0.5, 0),
-        Size = cfg.Size or UDim2.new(0, 680, 0, 420),
+        Size = defaultSize,
         BackgroundColor3 = self.Theme.Background,
         BorderSizePixel = 0
     })
     corner(root, 14)
-    stroke(root, self.Theme.Stroke, 1)
+    trackTheme(root, "BackgroundColor3", "Background")
+    local rootStroke = stroke(root, self.Theme.Stroke, 1)
+    trackTheme(rootStroke, "Color", "Stroke")
     create("UIScale", {Parent = root, Scale = cfg.UIScale or 1})
 
     local topbar = create("Frame", {
@@ -445,7 +512,7 @@ function NovaUI:CreateWindow(cfg)
         sidebar.Visible = not minimized
         sideDivider.Visible = not minimized
         animate(root, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Size = minimized and UDim2.new(0, 320, 0, 46) or (cfg.Size or UDim2.new(0, 680, 0, 420))
+            Size = minimized and UDim2.new(0, 320, 0, 46) or defaultSize
         })
     end)
 
@@ -493,7 +560,8 @@ function NovaUI:CreateWindow(cfg)
         Sidebar = sidebar,
         Content = content,
         Tabs = {},
-        SelectedTab = nil
+        SelectedTab = nil,
+        ConfigName = cfg.ConfigName or "default"
     }
     setmetatable(self.CurrentWindow, {__index = WindowMethods})
     return self.CurrentWindow
@@ -502,6 +570,7 @@ end
 function WindowMethods:CreateTab(cfg)
     cfg = cfg or {}
     local name = cfg.Name or "Tab"
+    local icon = cfg.Icon and (tostring(cfg.Icon) .. " ") or ""
 
     local tabBtn = create("TextButton", {
         Parent = self.Sidebar,
@@ -510,7 +579,7 @@ function WindowMethods:CreateTab(cfg)
         BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, 34),
         Font = Enum.Font.GothamSemibold,
-        Text = name,
+        Text = icon .. name,
         TextColor3 = NovaUI.Theme.Muted,
         TextSize = 14
     })
@@ -560,6 +629,14 @@ function WindowMethods:CreateTab(cfg)
     return tab
 end
 
+function WindowMethods:SaveConfig(name)
+    return NovaUI:SaveConfig(name or self.ConfigName)
+end
+
+function WindowMethods:LoadConfig(name, silent)
+    return NovaUI:LoadConfig(name or self.ConfigName, silent)
+end
+
 function TabMethods:CreateSection(cfg)
     cfg = cfg or {}
     local section = create("Frame", {
@@ -576,12 +653,25 @@ function TabMethods:CreateSection(cfg)
     local title = create("TextLabel", {
         Parent = section,
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 18),
+        Size = UDim2.new(1, -24, 0, 18),
         Font = Enum.Font.GothamBold,
         Text = cfg.Name or "Section",
         TextColor3 = NovaUI.Theme.Text,
         TextSize = 14,
         TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local collapseBtn = create("TextButton", {
+        Parent = section,
+        AutoButtonColor = false,
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, 0, 0, 0),
+        Size = UDim2.new(0, 24, 0, 18),
+        Font = Enum.Font.GothamBold,
+        Text = "˄",
+        TextColor3 = NovaUI.Theme.Muted,
+        TextSize = 14
     })
 
     local holder = create("Frame", {
@@ -597,6 +687,18 @@ function TabMethods:CreateSection(cfg)
         Root = section,
         Holder = holder
     }
+    local collapsed = cfg.Collapsed == true
+    local function applyCollapse()
+        holder.Visible = not collapsed
+        collapseBtn.Text = collapsed and "˅" or "˄"
+        section.AutomaticSize = collapsed and Enum.AutomaticSize.None or Enum.AutomaticSize.Y
+        section.Size = collapsed and UDim2.new(1, 0, 0, 42) or UDim2.new(1, 0, 0, 0)
+    end
+    connect(collapseBtn.MouseButton1Click, function()
+        collapsed = not collapsed
+        applyCollapse()
+    end)
+    applyCollapse()
     setmetatable(sectionObj, {__index = SectionMethods})
     return sectionObj
 end
@@ -759,19 +861,23 @@ function SectionMethods:AddToggle(cfg)
     })
 
     local toggle = {}
-    function toggle:Set(v)
+    function toggle:Set(v, silent)
         state = not not v
         animate(box, TweenInfo.new(0.15), {BackgroundColor3 = state and NovaUI.Theme.Accent or NovaUI.Theme.Surface})
         animate(knob, TweenInfo.new(0.15), {Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)})
         if flag then NovaUI.Flags[flag] = state end
-        if cfg.Callback then task.spawn(cfg.Callback, state) end
+        if not silent and cfg.Callback then task.spawn(cfg.Callback, state) end
+    end
+    function toggle:Get()
+        return state
     end
 
     connect(click.MouseButton1Click, function()
         toggle:Set(not state)
     end)
 
-    toggle:Set(state)
+    registerFlagSetter(flag, function(v, silent) toggle:Set(v, silent) end)
+    toggle:Set(state, true)
     return toggle
 end
 
@@ -828,15 +934,19 @@ function SectionMethods:AddSlider(cfg)
     corner(fill, 999)
 
     local slider = {}
-    function slider:Set(v)
+    function slider:Set(v, silent)
         v = math.clamp(v, min, max)
         v = math.floor(v / inc + 0.5) * inc
         value = v
-        local alpha = (v - min) / (max - min)
+        local range = (max - min)
+        local alpha = range == 0 and 0 or ((v - min) / range)
         fill.Size = UDim2.new(alpha, 0, 1, 0)
         valueLbl.Text = tostring(v) .. (cfg.ValueName and (" " .. cfg.ValueName) or "")
         if cfg.Flag then NovaUI.Flags[cfg.Flag] = v end
-        if cfg.Callback then task.spawn(cfg.Callback, v) end
+        if not silent and cfg.Callback then task.spawn(cfg.Callback, v) end
+    end
+    function slider:Get()
+        return value
     end
 
     local function update(posX)
@@ -861,7 +971,8 @@ function SectionMethods:AddSlider(cfg)
         end
     end)
 
-    slider:Set(value)
+    registerFlagSetter(cfg.Flag, function(v, silent) slider:Set(v, silent) end)
+    slider:Set(value, true)
     return slider
 end
 
@@ -925,12 +1036,17 @@ function SectionMethods:AddDropdown(cfg)
         TextSize = 14
     })
 
-    local listHolder = create("Frame", {
+    local listHolder = create("ScrollingFrame", {
         Parent = row,
+        BackgroundColor3 = Color3.new(1, 1, 1),
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 8, 0, 44),
         Size = UDim2.new(1, -16, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y
+        BorderSizePixel = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = NovaUI.Theme.Stroke,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
     list(listHolder, 6)
 
@@ -963,11 +1079,14 @@ function SectionMethods:AddDropdown(cfg)
         end
     end
 
-    function dropdown:Set(v)
+    function dropdown:Set(v, silent)
         selected = v
         current.Text = tostring(v)
         if cfg.Flag then NovaUI.Flags[cfg.Flag] = v end
-        if cfg.Callback then task.spawn(cfg.Callback, v) end
+        if not silent and cfg.Callback then task.spawn(cfg.Callback, v) end
+    end
+    function dropdown:Get()
+        return selected
     end
 
     function dropdown:Refresh(newOptions, keepValue)
@@ -983,12 +1102,14 @@ function SectionMethods:AddDropdown(cfg)
     connect(header.MouseButton1Click, function()
         open = not open
         arrow.Text = open and "˄" or "˅"
-        local extra = open and math.max(0, (#options * 36) + 8) or 0
+        local maxHeight = cfg.MaxDropdownHeight or 180
+        local extra = open and math.min(maxHeight, math.max(0, (#options * 36) + 8)) or 0
         row.Size = UDim2.new(1, 0, 0, 40 + extra)
     end)
 
     rebuild()
-    dropdown:Set(selected)
+    registerFlagSetter(cfg.Flag, function(v, silent) dropdown:Set(v, silent) end)
+    dropdown:Set(selected, true)
     return dropdown
 end
 
@@ -1025,9 +1146,9 @@ function SectionMethods:AddTextbox(cfg)
     corner(box, 8)
     stroke(box, NovaUI.Theme.Stroke, 1)
 
-    connect(box.FocusLost, function()
+    connect(box.FocusLost, function(enterPressed)
         if cfg.Flag then NovaUI.Flags[cfg.Flag] = box.Text end
-        if cfg.Callback then task.spawn(cfg.Callback, box.Text) end
+        if cfg.Callback then task.spawn(cfg.Callback, box.Text, enterPressed) end
         if cfg.TextDisappear then
             box.Text = ""
         end
@@ -1036,11 +1157,209 @@ function SectionMethods:AddTextbox(cfg)
     return {
         Set = function(_, v)
             box.Text = tostring(v)
+            if cfg.Flag then NovaUI.Flags[cfg.Flag] = box.Text end
         end,
         Get = function()
             return box.Text
         end
     }
+end
+
+function SectionMethods:AddBind(cfg)
+    cfg = cfg or {}
+    local row = baseRow(self.Holder, 40)
+    local bound = cfg.Default or cfg.Key or Enum.KeyCode.Unknown
+    local listening = false
+
+    create("TextLabel", {
+        Parent = row,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(0.4, 0, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = cfg.Name or "Bind",
+        TextColor3 = NovaUI.Theme.Text,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local button = create("TextButton", {
+        Parent = row,
+        AutoButtonColor = false,
+        BackgroundColor3 = NovaUI.Theme.Surface,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -12, 0.5, 0),
+        Size = UDim2.new(0, 180, 0, 26),
+        Font = Enum.Font.Gotham,
+        TextColor3 = NovaUI.Theme.Text,
+        TextSize = 12
+    })
+    corner(button, 8)
+    stroke(button, NovaUI.Theme.Stroke, 1)
+
+    local bind = {}
+    function bind:Set(v, silent)
+        if typeof(v) == "EnumItem" then
+            bound = v
+        elseif type(v) == "string" and Enum.KeyCode[v] then
+            bound = Enum.KeyCode[v]
+        end
+        button.Text = bound ~= Enum.KeyCode.Unknown and bound.Name or "Unbound"
+        if cfg.Flag then NovaUI.Flags[cfg.Flag] = bound.Name end
+        if not silent and cfg.Callback then task.spawn(cfg.Callback, bound) end
+    end
+    function bind:Get()
+        return bound
+    end
+
+    connect(button.MouseButton1Click, function()
+        listening = true
+        button.Text = "Press a key..."
+    end)
+
+    connect(UserInputService.InputBegan, function(input, gp)
+        if gp then return end
+        if listening and input.KeyCode ~= Enum.KeyCode.Unknown then
+            listening = false
+            bind:Set(input.KeyCode)
+            return
+        end
+        if input.KeyCode == bound and cfg.Pressed then
+            task.spawn(cfg.Pressed, input.KeyCode)
+        end
+    end)
+
+    registerFlagSetter(cfg.Flag, function(v, silent) bind:Set(v, silent) end)
+    bind:Set(bound, true)
+    return bind
+end
+
+function SectionMethods:AddColorPicker(cfg)
+    cfg = cfg or {}
+    local row = baseRow(self.Holder, 40)
+    local palette = cfg.Options or {
+        Color3.fromRGB(104, 118, 255),
+        Color3.fromRGB(68, 190, 119),
+        Color3.fromRGB(255, 160, 80),
+        Color3.fromRGB(215, 85, 85),
+        Color3.fromRGB(255, 255, 255)
+    }
+    local selected = cfg.Default or palette[1] or NovaUI.Theme.Accent
+
+    create("TextLabel", {
+        Parent = row,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(0.35, 0, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = cfg.Name or "Color",
+        TextColor3 = NovaUI.Theme.Text,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local swatches = create("Frame", {
+        Parent = row,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.38, 0, 0.5, -11),
+        Size = UDim2.new(0.62, -12, 0, 22)
+    })
+    list(swatches, 6, true)
+
+    local picker = {}
+    function picker:Set(v, silent)
+        if typeof(v) == "Color3" then
+            selected = v
+            if cfg.Flag then NovaUI.Flags[cfg.Flag] = {selected.R, selected.G, selected.B} end
+            if not silent and cfg.Callback then task.spawn(cfg.Callback, selected) end
+            if cfg.ApplyAccent then
+                NovaUI:SetAccent(selected)
+            end
+        end
+    end
+    function picker:Get()
+        return selected
+    end
+
+    for _, c in ipairs(palette) do
+        local b = create("TextButton", {
+            Parent = swatches,
+            AutoButtonColor = false,
+            BackgroundColor3 = c,
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, 22, 0, 22),
+            Text = ""
+        })
+        corner(b, 999)
+        stroke(b, NovaUI.Theme.Stroke, 1)
+        connect(b.MouseButton1Click, function()
+            picker:Set(c)
+        end)
+    end
+
+    registerFlagSetter(cfg.Flag, function(v, silent)
+        if typeof(v) == "Color3" then
+            picker:Set(v, silent)
+        elseif type(v) == "table" then
+            picker:Set(Color3.new(v[1] or 0, v[2] or 0, v[3] or 0), silent)
+        end
+    end)
+    picker:Set(selected, true)
+    return picker
+end
+
+function NovaUI:SaveConfig(name)
+    if not self.SaveConfig or not saveFileAvailable() then
+        return false, "save_unavailable"
+    end
+
+    local configName = sanitizeConfigName(name or (self.CurrentWindow and self.CurrentWindow.ConfigName) or "default")
+    if not isfolder(self.ConfigFolder) then
+        makefolder(self.ConfigFolder)
+    end
+
+    local payload = {
+        version = self.Version,
+        savedAt = os.time(),
+        flags = self.Flags
+    }
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(payload)
+    end)
+    if not ok then
+        return false, "encode_failed"
+    end
+
+    writefile(self.ConfigFolder .. "/" .. configName .. ".json", encoded)
+    return true
+end
+
+function NovaUI:LoadConfig(name, silent)
+    if not self.SaveConfig or not saveFileAvailable() then
+        return false, "load_unavailable"
+    end
+    local configName = sanitizeConfigName(name or (self.CurrentWindow and self.CurrentWindow.ConfigName) or "default")
+    local path = self.ConfigFolder .. "/" .. configName .. ".json"
+    if not isfile(path) then
+        return false, "missing"
+    end
+
+    local ok, parsed = pcall(function()
+        return HttpService:JSONDecode(readfile(path))
+    end)
+    if not ok or type(parsed) ~= "table" or type(parsed.flags) ~= "table" then
+        return false, "invalid"
+    end
+
+    for flag, value in pairs(parsed.flags) do
+        self.Flags[flag] = value
+        local setter = self.FlagSetters[flag]
+        if setter then
+            setter(value, silent ~= false)
+        end
+    end
+    return true
 end
 
 function NovaUI:Init()
