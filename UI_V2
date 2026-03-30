@@ -123,7 +123,11 @@ end
 
 function NovaUI:Toggle(force)
     if not self.MainScale then return end
-    self.Hidden = force == nil and not self.Hidden or not force
+    if force == nil then
+        self.Hidden = not self.Hidden
+    else
+        self.Hidden = not force
+    end
     
     animate(self.MainScale, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
         Scale = self.Hidden and 0 or 1
@@ -173,7 +177,7 @@ function NovaUI:CreateWindow(cfg)
         Size = defaultSize + UDim2.new(0, 40, 0, 40)
     })
     
-    local scaleObj = create("UIScale", {Parent = shadow, Scale = 1})
+    local scaleObj = create("UIScale", {Parent = shadow, Scale = 0})
 
     local root = create("Frame", {
         Parent = shadow,
@@ -225,7 +229,7 @@ function NovaUI:CreateWindow(cfg)
     end)
     
     connect(closeBtn.MouseButton1Click, function()
-        NovaUI:Toggle(true)
+        NovaUI:Toggle(false)
     end)
 
     if cfg.UseToggleButton ~= false then
@@ -544,6 +548,16 @@ function NovaUI:Notify(cfg)
         task.wait(0.3)
         msg:Destroy()
     end)
+end
+
+
+function NovaUI:Init()
+    if self.MainScale then
+        self.Hidden = false
+        animate(self.MainScale, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Scale = 1
+        })
+    end
 end
 
 return NovaUI
