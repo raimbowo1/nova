@@ -328,19 +328,21 @@ function WindowMethods:CreateTab(cfg)
     local function selectTab()
         if self.SelectedTab and self.SelectedTab ~= tab then
             local prev = self.SelectedTab
-            animate(prev.Page, TweenInfo.new(0.22, Enum.EasingStyle.Quint), {Position = UDim2.new(-0.06, 0, 0, 0)})
-            task.delay(0.22, function() prev.Page.Visible = false; prev.Page.Position = UDim2.new(0.06, 0, 0, 0) end)
+            -- Hide old page immediately so no overlap glitch
+            prev.Page.Visible = false
+            prev.Page.Position = UDim2.new(0, 0, 0, 0)
             animate(prev.Button, TweenInfo.new(0.25), {BackgroundTransparency = 1, TextColor3 = NovaUI.Theme.Muted})
             animate(prev.Button.UIStroke, TweenInfo.new(0.25), {Transparency = 1})
-            animate(prev.Indicator, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {Size = UDim2.new(0, 3, 0, 0)})
+            animate(prev.Indicator, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {Size = UDim2.new(0, 3, 0, 0)})
         end
         self.SelectedTab = tab
-        page.Position = UDim2.new(0.06, 0, 0, 0)
+        -- Slide new page in from a slight right offset
+        page.Position = UDim2.new(0.05, 0, 0, 0)
         page.Visible = true
-        animate(page, TweenInfo.new(0.28, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)})
+        animate(page, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)})
         animate(tabBtn, TweenInfo.new(0.25), {BackgroundTransparency = 0, TextColor3 = NovaUI.Theme.Text})
         animate(btnStroke, TweenInfo.new(0.25), {Transparency = 0})
-        animate(indicator, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 3, 0, 20)})
+        animate(indicator, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 3, 0, 20)})
     end
 
     connect(tabBtn.MouseButton1Click, selectTab)
