@@ -193,7 +193,7 @@ function NovaUI:CreateWindow(cfg)
     local rootStroke = applyStroke(root, self.Theme.Stroke, 1, 0.5)
 
     -- Topbar
-    local topbar = create("Frame", {Parent = root, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 48)})
+    local topbar = create("TextButton", {Parent = root, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 48), Text = "", AutoButtonColor = false})
     makeDraggable(topbar, shadow)
 
     local titleLbl = create("TextLabel", {
@@ -405,11 +405,11 @@ function SectionMethods:AddDropdown(cfg)
     local selected = cfg.Default or options[1] or "..."
     local row = makeRow(self.Holder, 38)
     
-    local title = create("TextLabel", {Parent = row, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0.5, 0, 1, 0), BackgroundTransparency = 1, Text = cfg.Name or "Dropdown", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
-    local valLbl = create("TextLabel", {Parent = row, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -30, 1, 0), BackgroundTransparency = 1, Text = tostring(selected), Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Accent, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right})
-    local arrow = create("TextLabel", {Parent = row, Position = UDim2.new(1, -26, 0, 0), Size = UDim2.new(0, 26, 1, 0), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Muted, TextSize = 14})
+    local title = create("TextLabel", {Parent = row, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0.5, 0, 0, 38), BackgroundTransparency = 1, Text = cfg.Name or "Dropdown", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+    local valLbl = create("TextLabel", {Parent = row, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -30, 0, 38), BackgroundTransparency = 1, Text = tostring(selected), Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Accent, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right})
+    local arrow = create("TextLabel", {Parent = row, Position = UDim2.new(1, -26, 0, 0), Size = UDim2.new(0, 26, 0, 38), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Muted, TextSize = 14})
     
-    local ddlBase = create("Frame", {Parent = row, Position = UDim2.new(0, 0, 0, 42), Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1, ClipsDescendants = true})
+    local ddlBase = create("Frame", {Parent = row, Position = UDim2.new(0, 0, 0, 38), Size = UDim2.new(1, 0, 0, 0), BackgroundColor3 = NovaUI.Theme.Background, BackgroundTransparency = 0, ClipsDescendants = true})
     local listLayout = create("UIListLayout", {Parent = ddlBase, Padding = UDim.new(0, 4)})
     
     local open = false
