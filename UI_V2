@@ -14,6 +14,7 @@ local NovaUI = {
     Flags = {},         -- Flag values
     Elements = {},      -- References to UI elements for search/dependencies
     ActiveTooltip = nil,
+    __PlayerStates = {}, -- State tracking for player list toggles (e.g. LoopKill)
     Theme = {
         Background = Color3.fromRGB(25, 25, 33),
         Surface = Color3.fromRGB(33, 33, 44),
@@ -395,31 +396,76 @@ end
 function WindowMethods:CreatePlayerTab(cfg)
     local tab = self:CreateTab({ Name = cfg.Name or "Players", Icon = cfg.Icon or "👥" })
     local actions = cfg.Actions or {}
+    local customToggles = cfg.Toggles or {}
     local holder = tab.Page
     
     local function reload()
         for _, c in ipairs(holder:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
         for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-            local row = create("Frame", {Parent = holder, Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = NovaUI.Theme.Surface})
-            applyCorner(row, 8); applyStroke(row, NovaUI.Theme.Stroke, 1, 0.4)
+            local isLocal = (plr == game.Players.LocalPlayer)
+            local row = create("Frame", {Parent = holder, Size = UDim2.new(1, 0, 0, 50), BackgroundColor3 = NovaUI.Theme.Surface})
+            applyCorner(row, 10); applyStroke(row, NovaUI.Theme.Stroke, 1, 0.4)
             
-            local pfp = create("ImageLabel", {Parent = row, Size = UDim2.new(0, 34, 0, 34), Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = NovaUI.Theme.Background, Image = "rbxthumb://type=AvatarHeadShot&id="..plr.UserId.."&w=48&h=48"})
-            applyCorner(pfp, 17); applyStroke(pfp, NovaUI.Theme.Accent, 1, 0.6)
+            -- Avatar
+            local pfp = create("ImageLabel", {Parent = row, Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0, 7, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = NovaUI.Theme.Background, Image = "rbxthumb://type=AvatarHeadShot&id="..plr.UserId.."&w=48&h=48"})
+            applyCorner(pfp, 18); applyStroke(pfp, NovaUI.Theme.Accent, 1, 0.6)
             
-            create("TextLabel", {Parent = row, BackgroundTransparency = 1, Size = UDim2.new(1, -120, 0, 16), Position = UDim2.new(0, 48, 0, 6), Text = plr.DisplayName, Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
-            create("TextLabel", {Parent = row, BackgroundTransparency = 1, Size = UDim2.new(1, -120, 0, 14), Position = UDim2.new(0, 48, 0, 24), Text = "@" .. plr.Name, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left})
+            -- Name Info
+            local mainText = create("TextLabel", {Parent = row, BackgroundTransparency = 1, Size = UDim2.new(1, -200, 0, 16), Position = UDim2.new(0, 52, 0, 8), Text = plr.DisplayName, Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+            local subText = create("TextLabel", {Parent = row, BackgroundTransparency = 1, Size = UDim2.new(1, -200, 0, 14), Position = UDim2.new(0, 52, 0, 26), Text = "@" .. plr.Name, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left})
             
-            local actBtn = create("TextButton", {Parent = row, Size = UDim2.new(0, 60, 0, 26), Position = UDim2.new(1, -12, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = NovaUI.Theme.Background, Text = "Interact ⌄", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 11})
-            applyCorner(actBtn, 6); applyStroke(actBtn, NovaUI.Theme.Stroke, 1, 0.5)
+            pcall(function()
+                if cfg.GetInfo then 
+                    local info = cfg.GetInfo(plr)
+                    if info then subText.Text = "@" .. plr.Name .. " • " .. tostring(info) end
+                end
+            end)
+
+            -- Team Indicator
+            local teamLabel = create("TextLabel", {Parent = row, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -85, 0, 8), Size = UDim2.new(0, 100, 0, 14), BackgroundTransparency = 1, Text = plr.Team and plr.Team.Name or "No Team", Font = Enum.Font.GothamSemibold, TextColor3 = plr.TeamColor.Color, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right})
+            
+            -- Right Actions Container
+            local actionContainer = create("Frame", {Parent = row, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.new(0, 180, 0, 26), BackgroundTransparency = 1})
+            create("UIListLayout", {Parent = actionContainer, FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8)})
+
+            -- Interact Button (Context Menu)
+            local actBtn = create("TextButton", {Parent = actionContainer, Size = UDim2.new(0, 65, 0, 24), BackgroundColor3 = NovaUI.Theme.Background, Text = "Interact ⌄", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 10})
+            applyCorner(actBtn, 6); applyStroke(actBtn, NovaUI.Theme.Stroke, 1, 0.4)
             
             local plrops = {}
             for name, cb in pairs(actions) do plrops[name] = function() cb(plr) end end
             connect(actBtn.MouseButton1Click, function() NovaUI:ShowContextMenu(plrops) end)
+
+            -- Per-Player Toggles (Inline)
+            if not isLocal then
+                if not NovaUI.__PlayerStates[plr.UserId] then NovaUI.__PlayerStates[plr.UserId] = {} end
+                for toggleName, callback in pairs(customToggles) do
+                    local state = NovaUI.__PlayerStates[plr.UserId][toggleName] or false
+                    local tgl = create("TextButton", {Parent = actionContainer, Size = UDim2.new(0, 24, 0, 24), BackgroundColor3 = state and NovaUI.Theme.Accent or NovaUI.Theme.Background, Text = "", AutoButtonColor = false})
+                    applyCorner(tgl, 6); local ts = applyStroke(tgl, NovaUI.Theme.Stroke, 1, 0.5)
+                    local icon = create("TextLabel", {Parent = tgl, Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "✓", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = NovaUI.Theme.Text, Visible = state})
+                    
+                    if state then trackTheme("Accent", tgl, "BackgroundColor3") end
+
+                    connect(tgl.MouseButton1Click, function()
+                        state = not state
+                        NovaUI.__PlayerStates[plr.UserId][toggleName] = state
+                        animate(tgl, TweenInfo.new(0.3), {BackgroundColor3 = state and NovaUI.Theme.Accent or NovaUI.Theme.Background})
+                        icon.Visible = state
+                        task.spawn(callback, plr, state)
+                    end)
+                    applyTooltip(tgl, toggleName)
+                end
+            end
         end
     end
 
-    game:GetService("Players").PlayerAdded:Connect(function() if tab.Page.Visible then reload() end end)
-    game:GetService("Players").PlayerRemoving:Connect(function() if tab.Page.Visible then reload() end end)
+    table.insert(NovaUI.Connections, game:GetService("Players").PlayerAdded:Connect(function() if tab.Page.Visible then reload() end end))
+    table.insert(NovaUI.Connections, game:GetService("Players").PlayerRemoving:Connect(function(plr) 
+        NovaUI.__PlayerStates[plr.UserId] = nil -- GC state
+        if tab.Page.Visible then reload() end 
+    end))
+    
     local oldSel = tab.Select
     tab.Select = function(selfArg) oldSel(selfArg); reload() end
     reload()
