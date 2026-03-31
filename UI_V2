@@ -757,37 +757,51 @@ function SectionMethods:AddStepper(cfg)
 end
 
 function SectionMethods:AddDropdown(cfg)
-    local options = cfg.Options or {}
+    cfg = cfg or {}
+
+    local Dropdown = {
+        Value = cfg.Default or "",
+        Options = cfg.Options or {},
+        Buttons = {},
+        Toggled = false,
+        Type = "Dropdown",
+        Save = cfg.Save or false
+    }
+
     local multi = cfg.Multi or false
     local searchable = cfg.Searchable or false
-    local selected = cfg.Default or (multi and {} or (options[1] or "None"))
+    local selected = cfg.Default or (multi and {} or "")
+    local maxVisible = 5
 
-    if multi and type(selected) ~= "table" then
-        selected = {selected}
-    elseif not multi and type(selected) ~= "string" then
-        selected = options[1] or "None"
+    if multi then
+        if type(selected) ~= "table" then
+            selected = {}
+        end
+    else
+        if not table.find(Dropdown.Options, selected) then
+            selected = Dropdown.Options[1] or "None"
+        end
     end
 
     local row = makeRow(self.Holder, 38)
-    row.ClipsDescendants = false
+    row.ClipsDescendants = true
     applyTooltip(row, cfg.Tooltip)
 
     local titleLbl = create("TextLabel", {
         Parent = row,
-        Position = UDim2.new(0,12,0,0),
-        Size = UDim2.new(0.5,0,0,38),
+        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(0.5, 0, 0, 38),
         BackgroundTransparency = 1,
         Text = cfg.Name or "Dropdown",
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Text,
         TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 5
+        TextXAlignment = Enum.TextXAlignment.Left
     })
 
     local function getValText()
         if multi then
-            if type(selected) ~= "table" or #selected == 0 then
+            if #selected == 0 then
                 return "None"
             elseif #selected == 1 then
                 return tostring(selected[1])
@@ -795,279 +809,321 @@ function SectionMethods:AddDropdown(cfg)
                 return tostring(#selected) .. " Selected"
             end
         else
-            return type(selected) == "string" and selected or "None"
+            return tostring(selected ~= "" and selected or "None")
         end
     end
 
-    local valLbl = create("TextLabel", {
+    local selectedLbl = create("TextLabel", {
         Parent = row,
-        Position = UDim2.new(0.5,0,0,0),
-        Size = UDim2.new(0.5,-30,0,38),
+        Position = UDim2.new(0.5, 0, 0, 0),
+        Size = UDim2.new(0.5, -30, 0, 38),
         BackgroundTransparency = 1,
         Text = getValText(),
         Font = Enum.Font.Gotham,
         TextColor3 = NovaUI.Theme.Accent,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Right,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = 5
+        TextTruncate = Enum.TextTruncate.AtEnd
     })
-    trackTheme("Accent", valLbl, "TextColor3")
+    trackTheme("Accent", selectedLbl, "TextColor3")
 
     local arrow = create("TextLabel", {
         Parent = row,
-        Position = UDim2.new(1,-26,0,0),
-        Size = UDim2.new(0,26,0,38),
+        Position = UDim2.new(1, -26, 0, 0),
+        Size = UDim2.new(0, 26, 0, 38),
         BackgroundTransparency = 1,
         Text = "⌄",
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Muted,
-        TextSize = 14,
-        ZIndex = 5
+        TextSize = 14
     })
 
-    local ddlBase = create("Frame", {
+    local topHitbox = create("TextButton", {
         Parent = row,
-        Position = UDim2.new(0,0,0,38),
-        Size = UDim2.new(1,0,0,0),
+        Size = UDim2.new(1, 0, 0, 38),
         BackgroundTransparency = 1,
-        ClipsDescendants = true,
-        ZIndex = 20
+        Text = ""
     })
 
-    local ddlInner = create("Frame", {
-        Parent = ddlBase,
-        Size = UDim2.new(1,0,1,0),
-        BackgroundColor3 = NovaUI.Theme.Surface,
-        ClipsDescendants = true,
-        ZIndex = 21
+    local divider = create("Frame", {
+        Parent = row,
+        Position = UDim2.new(0, 0, 0, 37),
+        Size = UDim2.new(1, 0, 0, 1),
+        BackgroundColor3 = NovaUI.Theme.Stroke,
+        BackgroundTransparency = 0.5,
+        BorderSizePixel = 0,
+        Visible = false
     })
-    applyCorner(ddlInner, 8)
-    applyStroke(ddlInner, NovaUI.Theme.Stroke, 1, 0.5)
 
-    local list = create("ScrollingFrame", {
-        Parent = ddlInner,
-        Size = UDim2.new(1,0,1, searchable and -30 or 0),
-        Position = UDim2.new(0,0,0, searchable and 30 or 0),
+    local dropdownContainer = create("ScrollingFrame", {
+        Parent = row,
+        Position = UDim2.new(0, 0, 0, 38),
+        Size = UDim2.new(1, 0, 0, 0),
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
         ScrollBarThickness = 2,
         ScrollBarImageColor3 = NovaUI.Theme.Accent,
-        BorderSizePixel = 0,
-        ZIndex = 22,
-        CanvasSize = UDim2.new(0,0,0,0)
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        ClipsDescendants = true
     })
-    create("UIListLayout", {Parent = list, SortOrder = Enum.SortOrder.LayoutOrder})
-    trackTheme("Accent", list, "ScrollBarImageColor3")
+    trackTheme("Accent", dropdownContainer, "ScrollBarImageColor3")
+
+    local dropdownLayout = create("UIListLayout", {
+        Parent = dropdownContainer,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 4)
+    })
 
     local searchBox
-    local buildOpts
-
     if searchable then
         searchBox = create("TextBox", {
-            Parent = ddlInner,
-            Size = UDim2.new(1,-12,0,24),
-            Position = UDim2.new(0,6,0,3),
-            BackgroundColor3 = NovaUI.Theme.Background,
-            TextColor3 = NovaUI.Theme.Text,
+            Parent = dropdownContainer,
+            Size = UDim2.new(1, -8, 0, 24),
+            Position = UDim2.new(0, 4, 0, 4),
+            BackgroundColor3 = NovaUI.Theme.Surface,
+            Text = "",
             PlaceholderText = "Search...",
             PlaceholderColor3 = NovaUI.Theme.Muted,
+            TextColor3 = NovaUI.Theme.Text,
             Font = Enum.Font.Gotham,
             TextSize = 12,
-            Text = "",
-            ZIndex = 22
+            ClearTextOnFocus = false
         })
-        applyCorner(searchBox, 4)
+        applyCorner(searchBox, 6)
+        applyStroke(searchBox, NovaUI.Theme.Stroke, 1, 0.5)
     end
 
-    local open = false
+    local listHolder = create("Frame", {
+        Parent = dropdownContainer,
+        Size = UDim2.new(1, 0, 0, 0),
+        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.Y
+    })
 
-    local function setDropdownZIndex(base)
-        row.ZIndex = base
-        titleLbl.ZIndex = base + 1
-        valLbl.ZIndex = base + 1
-        arrow.ZIndex = base + 1
-        ddlBase.ZIndex = base + 10
-        ddlInner.ZIndex = base + 11
-        list.ZIndex = base + 12
-        if searchBox then
-            searchBox.ZIndex = base + 12
+    local listLayout = create("UIListLayout", {
+        Parent = listHolder,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 2)
+    })
+
+    local function updateCanvas()
+        local contentHeight = listLayout.AbsoluteContentSize.Y
+        if searchable and searchBox then
+            contentHeight += 28
         end
-        for _, child in ipairs(list:GetChildren()) do
-            if child:IsA("GuiButton") or child:IsA("TextButton") or child:IsA("TextLabel") then
-                child.ZIndex = base + 13
-            end
-        end
+        dropdownContainer.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
     end
 
-    local function toggleMenu(forceState)
-        if forceState ~= nil then
-            open = forceState
-        else
-            open = not open
-        end
+    connect(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"), updateCanvas)
 
-        arrow.Text = open and "⌃" or "⌄"
+    local function setOpen(state)
+        Dropdown.Toggled = state
+        arrow.Text = state and "⌃" or "⌄"
+        divider.Visible = state
 
         local visibleCount = 0
-        for _, opt in ipairs(options) do
-            if not searchable or not searchBox or searchBox.Text == "" or string.find(tostring(opt):lower(), searchBox.Text:lower(), 1, true) then
+        for _, btn in pairs(Dropdown.Buttons) do
+            if btn.Visible then
                 visibleCount += 1
             end
         end
 
-        local maxH = math.min(visibleCount * 30 + (searchable and 34 or 4), 180)
+        local rowsHeight = math.min(visibleCount, maxVisible) * 30
+        local extra = searchable and 28 or 0
+        local targetHeight = state and (rowsHeight + extra) or 0
 
-        if open then
-            setDropdownZIndex(50)
-        else
-            setDropdownZIndex(1)
-        end
-
-        animate(row, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {
-            Size = UDim2.new(1,0,0, open and (38 + maxH) or 38)
+        animate(row, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, 38 + targetHeight)
         })
-        animate(ddlBase, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {
-            Size = UDim2.new(1,0,0, open and maxH or 0)
+        animate(dropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, targetHeight)
         })
     end
 
-    local hitBtn = create("TextButton", {
-        Parent = row,
-        Size = UDim2.new(1,0,0,38),
-        BackgroundTransparency = 1,
-        Text = "",
-        ZIndex = 6
-    })
+    local function syncSelectedVisual()
+        selectedLbl.Text = getValText()
 
-    connect(hitBtn.MouseButton1Click, function()
-        toggleMenu()
-    end)
-
-    buildOpts = function(filter)
-        for _, c in ipairs(list:GetChildren()) do
-            if c:IsA("GuiButton") or c:IsA("TextButton") then
-                c:Destroy()
+        for value, button in pairs(Dropdown.Buttons) do
+            local isSelected
+            if multi then
+                isSelected = table.find(selected, value) ~= nil
+            else
+                isSelected = (selected == value)
             end
-        end
 
-        local count = 0
-
-        for _, opt in ipairs(options) do
-            if not filter or filter == "" or string.find(tostring(opt):lower(), filter:lower(), 1, true) then
-                count += 1
-
-                local isSel = multi
-                    and type(selected) == "table"
-                    and table.find(selected, opt)
-                    or (not multi and opt == selected)
-
-                local oBtn = create("TextButton", {
-                    Parent = list,
-                    Size = UDim2.new(1,0,0,30),
-                    BackgroundColor3 = NovaUI.Theme.Surface,
-                    BackgroundTransparency = 1,
-                    Text = "  " .. tostring(opt),
-                    Font = Enum.Font.Gotham,
-                    TextColor3 = isSel and NovaUI.Theme.Accent or NovaUI.Theme.Text,
-                    TextSize = 12,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    ZIndex = 63
-                })
-
-                connect(oBtn.MouseButton1Click, function()
-                    if multi then
-                        if type(selected) ~= "table" then
-                            selected = {}
-                        end
-
-                        local idx = table.find(selected, opt)
-                        if idx then
-                            table.remove(selected, idx)
-                        else
-                            table.insert(selected, opt)
-                        end
-
-                        valLbl.Text = getValText()
-                        buildOpts(filter)
-                    else
-                        selected = tostring(opt)
-                        valLbl.Text = getValText()
-                        toggleMenu(false)
-                        buildOpts(searchBox and searchBox.Text or nil)
-                    end
-
-                    if cfg.Flag then
-                        NovaUI.Flags[cfg.Flag] = selected
-                    end
-                    if cfg.Callback then
-                        task.spawn(cfg.Callback, selected)
-                    end
-                end)
-            end
-        end
-
-        list.CanvasSize = UDim2.new(0,0,0,count * 30)
-        if open then
-            setDropdownZIndex(50)
+            button.BackgroundTransparency = isSelected and 0 or 1
+            button.Title.TextTransparency = isSelected and 0 or 0.35
+            button.Title.TextColor3 = isSelected and NovaUI.Theme.Accent or NovaUI.Theme.Text
         end
     end
 
-    if searchBox then
-        connect(searchBox:GetPropertyChangedSignal("Text"), function()
-            buildOpts(searchBox.Text)
-        end)
-    end
+    local function addOptionButton(option)
+        local btn = create("TextButton", {
+            Parent = listHolder,
+            Size = UDim2.new(1, 0, 0, 28),
+            BackgroundColor3 = NovaUI.Theme.Background,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Text = ""
+        })
+        applyCorner(btn, 6)
 
-    buildOpts()
-    setDropdownZIndex(1)
+        local title = create("TextLabel", {
+            Parent = btn,
+            Name = "Title",
+            Size = UDim2.new(1, -10, 1, 0),
+            Position = UDim2.new(0, 10, 0, 0),
+            BackgroundTransparency = 1,
+            Text = tostring(option),
+            Font = Enum.Font.Gotham,
+            TextColor3 = NovaUI.Theme.Text,
+            TextTransparency = 0.35,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left
+        })
 
-    return NovaUI:RegisterElement({
-        Refresh = function(newOpts)
-            options = newOpts or {}
+        btn.Title = title
 
+        connect(btn.MouseButton1Click, function()
             if multi then
-                if type(selected) ~= "table" then
-                    selected = {}
+                local idx = table.find(selected, option)
+                if idx then
+                    table.remove(selected, idx)
+                else
+                    table.insert(selected, option)
                 end
             else
-                if type(selected) ~= "string" or not table.find(options, selected) then
-                    selected = options[1] or "None"
-                end
+                selected = option
+                setOpen(false)
             end
 
-            valLbl.Text = getValText()
-            buildOpts(searchBox and searchBox.Text or nil)
-
-            if open and #options == 0 then
-                toggleMenu(false)
-            end
-        end,
-
-        Get = function()
-            return selected
-        end,
-
-        Set = function(val, skipCallback)
-            if multi then
-                selected = type(val) == "table" and val or {}
-            else
-                selected = type(val) == "string" and val or "None"
-                if not table.find(options, selected) then
-                    selected = options[1] or "None"
-                end
-            end
-
-            valLbl.Text = getValText()
-            buildOpts(searchBox and searchBox.Text or nil)
+            Dropdown.Value = selected
+            syncSelectedVisual()
 
             if cfg.Flag then
                 NovaUI.Flags[cfg.Flag] = selected
             end
-            if not skipCallback and cfg.Callback then
+            if cfg.Callback then
                 task.spawn(cfg.Callback, selected)
             end
+        end)
+
+        Dropdown.Buttons[option] = btn
+    end
+
+    local function clearButtons()
+        for _, btn in pairs(Dropdown.Buttons) do
+            if btn and btn.Parent then
+                btn:Destroy()
+            end
         end
-    }, cfg.Name, row, cfg.Flag)
+        Dropdown.Buttons = {}
+    end
+
+    local function rebuildOptions(filterText)
+        clearButtons()
+
+        local visible = 0
+        for _, option in ipairs(Dropdown.Options) do
+            local text = tostring(option)
+            local matches = true
+
+            if filterText and filterText ~= "" then
+                matches = string.find(string.lower(text), string.lower(filterText), 1, true) ~= nil
+            end
+
+            if matches then
+                addOptionButton(option)
+                visible += 1
+            end
+        end
+
+        syncSelectedVisual()
+        updateCanvas()
+
+        if Dropdown.Toggled then
+            local rowsHeight = math.min(visible, maxVisible) * 30
+            local extra = searchable and 28 or 0
+            row.Size = UDim2.new(1, 0, 0, 38 + rowsHeight + extra)
+            dropdownContainer.Size = UDim2.new(1, 0, 0, rowsHeight + extra)
+        end
+    end
+
+    if searchable and searchBox then
+        connect(searchBox:GetPropertyChangedSignal("Text"), function()
+            rebuildOptions(searchBox.Text)
+        end)
+    end
+
+    connect(topHitbox.MouseButton1Click, function()
+        setOpen(not Dropdown.Toggled)
+    end)
+
+    function Dropdown:Refresh(newOptions, deleteOld)
+        if deleteOld == nil then
+            deleteOld = true
+        end
+
+        if deleteOld then
+            self.Options = {}
+        end
+
+        self.Options = newOptions or {}
+
+        if not multi then
+            if not table.find(self.Options, selected) then
+                selected = self.Options[1] or "None"
+            end
+        else
+            local fixed = {}
+            for _, value in ipairs(selected) do
+                if table.find(self.Options, value) then
+                    table.insert(fixed, value)
+                end
+            end
+            selected = fixed
+        end
+
+        self.Value = selected
+        rebuildOptions(searchable and searchBox and searchBox.Text or nil)
+        syncSelectedVisual()
+    end
+
+    function Dropdown:Set(value, skipCallback)
+        if multi then
+            selected = type(value) == "table" and value or {}
+        else
+            if table.find(Dropdown.Options, value) then
+                selected = value
+            else
+                selected = Dropdown.Options[1] or "None"
+            end
+        end
+
+        Dropdown.Value = selected
+        syncSelectedVisual()
+
+        if cfg.Flag then
+            NovaUI.Flags[cfg.Flag] = selected
+        end
+        if not skipCallback and cfg.Callback then
+            task.spawn(cfg.Callback, selected)
+        end
+    end
+
+    function Dropdown:Get()
+        return selected
+    end
+
+    if cfg.Flag then
+        NovaUI.Flags[cfg.Flag] = selected
+    end
+
+    rebuildOptions()
+    syncSelectedVisual()
+    setOpen(false)
+
+    return NovaUI:RegisterElement(Dropdown, cfg.Name or "Dropdown", row, cfg.Flag)
 end
 
 function SectionMethods:AddTextbox(cfg)
