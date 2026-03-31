@@ -761,6 +761,7 @@ function SectionMethods:AddDropdown(cfg)
     local multi = cfg.Multi or false
     local searchable = cfg.Searchable or false
     local selected = cfg.Default or (multi and {} or (options[1] or "None"))
+
     if multi and type(selected) ~= "table" then
         selected = {selected}
     elseif not multi and type(selected) ~= "string" then
@@ -768,9 +769,10 @@ function SectionMethods:AddDropdown(cfg)
     end
 
     local row = makeRow(self.Holder, 38)
+    row.ClipsDescendants = false
     applyTooltip(row, cfg.Tooltip)
 
-    create("TextLabel", {
+    local titleLbl = create("TextLabel", {
         Parent = row,
         Position = UDim2.new(0,12,0,0),
         Size = UDim2.new(0.5,0,0,38),
@@ -779,7 +781,8 @@ function SectionMethods:AddDropdown(cfg)
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Text,
         TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 5
     })
 
     local function getValText()
@@ -806,7 +809,8 @@ function SectionMethods:AddDropdown(cfg)
         TextColor3 = NovaUI.Theme.Accent,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Right,
-        TextTruncate = Enum.TextTruncate.AtEnd
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = 5
     })
     trackTheme("Accent", valLbl, "TextColor3")
 
@@ -818,7 +822,8 @@ function SectionMethods:AddDropdown(cfg)
         Text = "⌄",
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Muted,
-        TextSize = 14
+        TextSize = 14,
+        ZIndex = 5
     })
 
     local ddlBase = create("Frame", {
@@ -826,14 +831,16 @@ function SectionMethods:AddDropdown(cfg)
         Position = UDim2.new(0,0,0,38),
         Size = UDim2.new(1,0,0,0),
         BackgroundTransparency = 1,
-        ClipsDescendants = true
+        ClipsDescendants = true,
+        ZIndex = 20
     })
 
     local ddlInner = create("Frame", {
         Parent = ddlBase,
         Size = UDim2.new(1,0,1,0),
         BackgroundColor3 = NovaUI.Theme.Surface,
-        ClipsDescendants = true
+        ClipsDescendants = true,
+        ZIndex = 21
     })
     applyCorner(ddlInner, 8)
     applyStroke(ddlInner, NovaUI.Theme.Stroke, 1, 0.5)
@@ -844,15 +851,19 @@ function SectionMethods:AddDropdown(cfg)
         Position = UDim2.new(0,0,0, searchable and 30 or 0),
         BackgroundTransparency = 1,
         ScrollBarThickness = 2,
-        ScrollBarImageColor3 = NovaUI.Theme.Accent
+        ScrollBarImageColor3 = NovaUI.Theme.Accent,
+        BorderSizePixel = 0,
+        ZIndex = 22,
+        CanvasSize = UDim2.new(0,0,0,0)
     })
     create("UIListLayout", {Parent = list, SortOrder = Enum.SortOrder.LayoutOrder})
     trackTheme("Accent", list, "ScrollBarImageColor3")
 
+    local searchBox
     local buildOpts
 
     if searchable then
-        local sb = create("TextBox", {
+        searchBox = create("TextBox", {
             Parent = ddlInner,
             Size = UDim2.new(1,-12,0,24),
             Position = UDim2.new(0,6,0,3),
@@ -862,26 +873,60 @@ function SectionMethods:AddDropdown(cfg)
             PlaceholderColor3 = NovaUI.Theme.Muted,
             Font = Enum.Font.Gotham,
             TextSize = 12,
-            Text = ""
+            Text = "",
+            ZIndex = 22
         })
-        applyCorner(sb, 4)
-        connect(sb.Changed, function()
-            if buildOpts then
-                buildOpts(sb.Text)
-            end
-        end)
+        applyCorner(searchBox, 4)
     end
 
     local open = false
-    local function toggleMenu()
-        open = not open
+
+    local function setDropdownZIndex(base)
+        row.ZIndex = base
+        titleLbl.ZIndex = base + 1
+        valLbl.ZIndex = base + 1
+        arrow.ZIndex = base + 1
+        ddlBase.ZIndex = base + 10
+        ddlInner.ZIndex = base + 11
+        list.ZIndex = base + 12
+        if searchBox then
+            searchBox.ZIndex = base + 12
+        end
+        for _, child in ipairs(list:GetChildren()) do
+            if child:IsA("GuiButton") or child:IsA("TextButton") or child:IsA("TextLabel") then
+                child.ZIndex = base + 13
+            end
+        end
+    end
+
+    local function toggleMenu(forceState)
+        if forceState ~= nil then
+            open = forceState
+        else
+            open = not open
+        end
+
         arrow.Text = open and "⌃" or "⌄"
-        local maxH = math.min(#options * 30 + (searchable and 34 or 4), 180)
-        list.CanvasSize = UDim2.new(0,0,0,#options * 30)
-        animate(row, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+
+        local visibleCount = 0
+        for _, opt in ipairs(options) do
+            if not searchable or not searchBox or searchBox.Text == "" or string.find(tostring(opt):lower(), searchBox.Text:lower(), 1, true) then
+                visibleCount += 1
+            end
+        end
+
+        local maxH = math.min(visibleCount * 30 + (searchable and 34 or 4), 180)
+
+        if open then
+            setDropdownZIndex(50)
+        else
+            setDropdownZIndex(1)
+        end
+
+        animate(row, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {
             Size = UDim2.new(1,0,0, open and (38 + maxH) or 38)
         })
-        animate(ddlBase, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+        animate(ddlBase, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {
             Size = UDim2.new(1,0,0, open and maxH or 0)
         })
     end
@@ -890,22 +935,31 @@ function SectionMethods:AddDropdown(cfg)
         Parent = row,
         Size = UDim2.new(1,0,0,38),
         BackgroundTransparency = 1,
-        Text = ""
+        Text = "",
+        ZIndex = 6
     })
-    connect(hitBtn.MouseButton1Click, toggleMenu)
+
+    connect(hitBtn.MouseButton1Click, function()
+        toggleMenu()
+    end)
 
     buildOpts = function(filter)
         for _, c in ipairs(list:GetChildren()) do
-            if c:IsA("GuiButton") then
+            if c:IsA("GuiButton") or c:IsA("TextButton") then
                 c:Destroy()
             end
         end
 
         local count = 0
+
         for _, opt in ipairs(options) do
             if not filter or filter == "" or string.find(tostring(opt):lower(), filter:lower(), 1, true) then
-                count = count + 1
-                local isSel = multi and type(selected) == "table" and table.find(selected, opt) or (not multi and opt == selected)
+                count += 1
+
+                local isSel = multi
+                    and type(selected) == "table"
+                    and table.find(selected, opt)
+                    or (not multi and opt == selected)
 
                 local oBtn = create("TextButton", {
                     Parent = list,
@@ -916,7 +970,8 @@ function SectionMethods:AddDropdown(cfg)
                     Font = Enum.Font.Gotham,
                     TextColor3 = isSel and NovaUI.Theme.Accent or NovaUI.Theme.Text,
                     TextSize = 12,
-                    TextXAlignment = Enum.TextXAlignment.Left
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 63
                 })
 
                 connect(oBtn.MouseButton1Click, function()
@@ -924,19 +979,21 @@ function SectionMethods:AddDropdown(cfg)
                         if type(selected) ~= "table" then
                             selected = {}
                         end
+
                         local idx = table.find(selected, opt)
                         if idx then
                             table.remove(selected, idx)
                         else
                             table.insert(selected, opt)
                         end
+
                         valLbl.Text = getValText()
                         buildOpts(filter)
                     else
                         selected = tostring(opt)
                         valLbl.Text = getValText()
-                        toggleMenu()
-                        buildOpts()
+                        toggleMenu(false)
+                        buildOpts(searchBox and searchBox.Text or nil)
                     end
 
                     if cfg.Flag then
@@ -950,9 +1007,19 @@ function SectionMethods:AddDropdown(cfg)
         end
 
         list.CanvasSize = UDim2.new(0,0,0,count * 30)
+        if open then
+            setDropdownZIndex(50)
+        end
+    end
+
+    if searchBox then
+        connect(searchBox:GetPropertyChangedSignal("Text"), function()
+            buildOpts(searchBox.Text)
+        end)
     end
 
     buildOpts()
+    setDropdownZIndex(1)
 
     return NovaUI:RegisterElement({
         Refresh = function(newOpts)
@@ -969,7 +1036,11 @@ function SectionMethods:AddDropdown(cfg)
             end
 
             valLbl.Text = getValText()
-            buildOpts()
+            buildOpts(searchBox and searchBox.Text or nil)
+
+            if open and #options == 0 then
+                toggleMenu(false)
+            end
         end,
 
         Get = function()
@@ -987,7 +1058,7 @@ function SectionMethods:AddDropdown(cfg)
             end
 
             valLbl.Text = getValText()
-            buildOpts()
+            buildOpts(searchBox and searchBox.Text or nil)
 
             if cfg.Flag then
                 NovaUI.Flags[cfg.Flag] = selected
