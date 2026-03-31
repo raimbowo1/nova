@@ -787,7 +787,7 @@ function SectionMethods:AddDropdown(cfg)
     row.ClipsDescendants = true
     applyTooltip(row, cfg.Tooltip)
 
-    local titleLbl = create("TextLabel", {
+    create("TextLabel", {
         Parent = row,
         Position = UDim2.new(0, 12, 0, 0),
         Size = UDim2.new(0.5, 0, 0, 38),
@@ -868,12 +868,6 @@ function SectionMethods:AddDropdown(cfg)
     })
     trackTheme("Accent", dropdownContainer, "ScrollBarImageColor3")
 
-    local dropdownLayout = create("UIListLayout", {
-        Parent = dropdownContainer,
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 4)
-    })
-
     local searchBox
     if searchable then
         searchBox = create("TextBox", {
@@ -916,19 +910,22 @@ function SectionMethods:AddDropdown(cfg)
 
     connect(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"), updateCanvas)
 
+    local function getVisibleButtonCount()
+        local visibleCount = 0
+        for _, data in pairs(Dropdown.Buttons) do
+            if data.Button.Visible then
+                visibleCount += 1
+            end
+        end
+        return visibleCount
+    end
+
     local function setOpen(state)
         Dropdown.Toggled = state
         arrow.Text = state and "⌃" or "⌄"
         divider.Visible = state
 
-        local visibleCount = 0
-        for _, btn in pairs(Dropdown.Buttons) do
-            if btn.Visible then
-                visibleCount += 1
-            end
-        end
-
-        local rowsHeight = math.min(visibleCount, maxVisible) * 30
+        local rowsHeight = math.min(getVisibleButtonCount(), maxVisible) * 30
         local extra = searchable and 28 or 0
         local targetHeight = state and (rowsHeight + extra) or 0
 
@@ -943,7 +940,10 @@ function SectionMethods:AddDropdown(cfg)
     local function syncSelectedVisual()
         selectedLbl.Text = getValText()
 
-        for value, button in pairs(Dropdown.Buttons) do
+        for value, data in pairs(Dropdown.Buttons) do
+            local button = data.Button
+            local title = data.Title
+
             local isSelected
             if multi then
                 isSelected = table.find(selected, value) ~= nil
@@ -952,8 +952,8 @@ function SectionMethods:AddDropdown(cfg)
             end
 
             button.BackgroundTransparency = isSelected and 0 or 1
-            button.Title.TextTransparency = isSelected and 0 or 0.35
-            button.Title.TextColor3 = isSelected and NovaUI.Theme.Accent or NovaUI.Theme.Text
+            title.TextTransparency = isSelected and 0 or 0.35
+            title.TextColor3 = isSelected and NovaUI.Theme.Accent or NovaUI.Theme.Text
         end
     end
 
@@ -982,8 +982,6 @@ function SectionMethods:AddDropdown(cfg)
             TextXAlignment = Enum.TextXAlignment.Left
         })
 
-        btn.Title = title
-
         connect(btn.MouseButton1Click, function()
             if multi then
                 local idx = table.find(selected, option)
@@ -1008,13 +1006,16 @@ function SectionMethods:AddDropdown(cfg)
             end
         end)
 
-        Dropdown.Buttons[option] = btn
+        Dropdown.Buttons[option] = {
+            Button = btn,
+            Title = title
+        }
     end
 
     local function clearButtons()
-        for _, btn in pairs(Dropdown.Buttons) do
-            if btn and btn.Parent then
-                btn:Destroy()
+        for _, data in pairs(Dropdown.Buttons) do
+            if data.Button and data.Button.Parent then
+                data.Button:Destroy()
             end
         end
         Dropdown.Buttons = {}
@@ -1125,6 +1126,7 @@ function SectionMethods:AddDropdown(cfg)
 
     return NovaUI:RegisterElement(Dropdown, cfg.Name or "Dropdown", row, cfg.Flag)
 end
+
 
 function SectionMethods:AddTextbox(cfg)
     local row = makeRow(self.Holder, 42)
