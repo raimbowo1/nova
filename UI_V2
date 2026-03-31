@@ -907,110 +907,95 @@ function SectionMethods:AddBind(cfg)
     return NovaUI:RegisterElement({Get = function() return bound.Name end, Set = function(v, s) bound = (type(v)=="string" and Enum.KeyCode[v]) or v or Enum.KeyCode.Unknown; btn.Text = bound.Name; if cfg.Flag then NovaUI.Flags[cfg.Flag] = bound.Name end; if not s and cfg.Callback then task.spawn(cfg.Callback, bound) end end}, cfg.Name, row, cfg.Flag)
 end
 
--- NEW: Full HSV ColorPicker
 function SectionMethods:AddColorPicker(cfg)
     local selected = cfg.Default or Color3.fromRGB(255, 255, 255)
     local row = makeRow(self.Holder, 42)
     applyTooltip(row, cfg.Tooltip)
 
-    create("TextLabel", {Parent = row, Position = UDim2.new(0,12,0,0), Size = UDim2.new(1,-70,1,0), BackgroundTransparency = 1, Text = cfg.Name or "Color", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
-    local disp = create("Frame", {Parent = row, Position = UDim2.new(1,-44,0.5,-12), Size = UDim2.new(0,32,0,24), BackgroundColor3 = selected}); applyCorner(disp, 6); applyStroke(disp, NovaUI.Theme.Stroke, 1, 0.5)
+    create("TextLabel", {
+        Parent = row,
+        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(1, -60, 1, 0),
+        BackgroundTransparency = 1,
+        Text = cfg.Name or "Color",
+        Font = Enum.Font.GothamBold,
+        TextColor3 = NovaUI.Theme.Text,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
 
-    -- Picker panel (hidden until opened)
-    local pickerOpen = false
-    local pickerFrame = create("Frame", {Parent = row, Position = UDim2.new(0,0,0,42), Size = UDim2.new(1,0,0,0), BackgroundTransparency = 1, ClipsDescendants = true})
-    local pickerInner = create("Frame", {Parent = pickerFrame, Size = UDim2.new(1,0,1,0), BackgroundColor3 = NovaUI.Theme.Surface}); applyCorner(pickerInner, 8); applyStroke(pickerInner, NovaUI.Theme.Stroke, 1, 0.5)
-    create("UIPadding", {Parent = pickerInner, PaddingLeft = UDim.new(0,8), PaddingRight = UDim.new(0,8), PaddingTop = UDim.new(0,8), PaddingBottom = UDim.new(0,8)})
+    local disp = create("Frame", {
+        Parent = row,
+        Position = UDim2.new(1, -44, 0.5, -12),
+        Size = UDim2.new(0, 32, 0, 24),
+        BackgroundColor3 = selected
+    })
+    applyCorner(disp, 6)
+    applyStroke(disp, NovaUI.Theme.Stroke, 1, 0.5)
 
-    -- SV canvas
-    local svCanvas = create("ImageLabel", {Parent = pickerInner, Size = UDim2.new(1,0,0,110), BackgroundColor3 = Color3.new(1,0,0), Image = "rbxassetid://4155801252"})
-    applyCorner(svCanvas, 6)
-    local svKnob = create("Frame", {Parent = svCanvas, Size = UDim2.new(0,12,0,12), AnchorPoint = Vector2.new(0.5,0.5), BackgroundColor3 = Color3.new(1,1,1)}); applyCorner(svKnob, 6); applyStroke(svKnob, Color3.new(0,0,0), 1, 0)
+    local btn = create("TextButton", {
+        Parent = row,
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Text = ""
+    })
 
-    -- Hue bar
-    local hueBar = create("ImageLabel", {Parent = pickerInner, Size = UDim2.new(1,0,0,16), BackgroundColor3 = Color3.new(1,1,1), Image = "rbxassetid://4155799786"})
-    applyCorner(hueBar, 6)
-    local hueKnob = create("Frame", {Parent = hueBar, Size = UDim2.new(0,10,1,0), AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.new(0,0,0.5,0), BackgroundColor3 = Color3.new(1,1,1)}); applyCorner(hueKnob, 4); applyStroke(hueKnob, Color3.new(0,0,0), 1, 0)
+    connect(btn.MouseButton1Click, function()
+        local h, s, v = selected:ToHSV()
+        h = (h + 0.1) % 1.0
+        selected = Color3.fromHSV(h, s > 0 and s or 0.8, 1)
 
-    -- Hex input
-    local hexBox = create("TextBox", {Parent = pickerInner, Size = UDim2.new(1,0,0,24), BackgroundColor3 = NovaUI.Theme.Background, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Text, TextSize = 12, Text = "#"..selected:ToHex(), PlaceholderText = "#RRGGBB", TextXAlignment = Enum.TextXAlignment.Center}); applyCorner(hexBox, 4); applyStroke(hexBox, NovaUI.Theme.Stroke, 1, 0.5)
+        animate(disp, TweenInfo.new(0.2), {BackgroundColor3 = selected})
 
-    create("UIListLayout", {Parent = pickerInner, Padding = UDim.new(0,6), SortOrder = Enum.SortOrder.LayoutOrder})
+        if cfg.ApplyAccent then
+            NovaUI:SetTheme({Accent = selected})
+        end
 
-    local h, s, v = selected:ToHSV()
+        if cfg.Flag then
+            NovaUI.Flags[cfg.Flag] = selected:ToHex()
+        end
 
-    local function updateDisplay()
-        selected = Color3.fromHSV(h, s, v)
-        disp.BackgroundColor3 = selected
-        svCanvas.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
-        svKnob.Position = UDim2.new(s, 0, 1-v, 0)
-        hueKnob.Position = UDim2.new(h, 0, 0.5, 0)
-        hexBox.Text = "#"..selected:ToHex()
-        if cfg.ApplyAccent then NovaUI:SetTheme({Accent = selected}) end
-        if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end
-        if cfg.Callback then task.spawn(cfg.Callback, selected) end
+        if cfg.Callback then
+            task.spawn(cfg.Callback, selected)
+        end
+    end)
+
+    if cfg.Flag then
+        NovaUI.Flags[cfg.Flag] = selected:ToHex()
     end
 
-    -- SV drag
-    local svDrag = false
-    connect(svCanvas.InputBegan, function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then svDrag = true end end)
-    connect(svCanvas.InputEnded, function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then svDrag = false end end)
-    connect(UserInputService.InputChanged, function(inp)
-        if svDrag and inp.UserInputType == Enum.UserInputType.MouseMovement then
-            local rel = inp.Position - svCanvas.AbsolutePosition
-            s = math.clamp(rel.X / svCanvas.AbsoluteSize.X, 0, 1)
-            v = 1 - math.clamp(rel.Y / svCanvas.AbsoluteSize.Y, 0, 1)
-            updateDisplay()
-        end
-    end)
-
-    -- Hue drag
-    local hueDrag = false
-    connect(hueBar.InputBegan, function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then hueDrag = true end end)
-    connect(hueBar.InputEnded, function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then hueDrag = false end end)
-    connect(UserInputService.InputChanged, function(inp)
-        if hueDrag and inp.UserInputType == Enum.UserInputType.MouseMovement then
-            h = math.clamp((inp.Position.X - hueBar.AbsolutePosition.X) / hueBar.AbsoluteSize.X, 0, 1)
-            updateDisplay()
-        end
-    end)
-
-    -- Hex input
-    connect(hexBox.FocusLost, function()
-        local hex = hexBox.Text:gsub("#","")
-        if #hex == 6 then
-            local ok, c = pcall(function() return Color3.fromHex(hex) end)
-            if ok then h, s, v = c:ToHSV(); updateDisplay() end
-        end
-    end)
-
-    -- Open/close toggle
-    local openBtn = create("TextButton", {Parent = row, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = ""})
-    connect(openBtn.MouseButton1Click, function()
-        pickerOpen = not pickerOpen
-        animate(row, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Size = UDim2.new(1,0,0, pickerOpen and (42+182) or 42)})
-        animate(pickerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {Size = UDim2.new(1,0,0, pickerOpen and 182 or 0)})
-    end)
-
-    if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end
-
-    local obj = {
+    return NovaUI:RegisterElement({
         Set = function(c, skipCallback)
-            if type(c) == "string" then pcall(function() c = Color3.fromHex(c:gsub("#","")) end) end
-            if typeof(c) ~= "Color3" then c = Color3.new(1,1,1) end
-            selected = c; h, s, v = c:ToHSV()
-            disp.BackgroundColor3 = selected
-            svCanvas.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
-            svKnob.Position = UDim2.new(s, 0, 1-v, 0)
-            hueKnob.Position = UDim2.new(h, 0, 0.5, 0)
-            hexBox.Text = "#"..selected:ToHex()
-            if cfg.ApplyAccent then NovaUI:SetTheme({Accent = selected}) end
-            if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end
-            if not skipCallback and cfg.Callback then task.spawn(cfg.Callback, selected) end
+            if type(c) == "string" then
+                pcall(function()
+                    c = Color3.fromHex(c)
+                end)
+            end
+
+            if typeof(c) ~= "Color3" then
+                c = Color3.new(1, 1, 1)
+            end
+
+            selected = c
+            animate(disp, TweenInfo.new(0.2), {BackgroundColor3 = selected})
+
+            if cfg.ApplyAccent then
+                NovaUI:SetTheme({Accent = selected})
+            end
+
+            if cfg.Flag then
+                NovaUI.Flags[cfg.Flag] = selected:ToHex()
+            end
+
+            if not skipCallback and cfg.Callback then
+                task.spawn(cfg.Callback, selected)
+            end
         end,
-        Get = function() return selected end
-    }
-    return NovaUI:RegisterElement(obj, cfg.Name, row, cfg.Flag)
+
+        Get = function()
+            return selected
+        end
+    }, cfg.Name, row, cfg.Flag)
 end
 
 -- NEW: RadioGroup (mutually exclusive options)
