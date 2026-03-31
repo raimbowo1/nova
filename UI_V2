@@ -672,7 +672,6 @@ function NovaUI:Notify(cfg)
     local holder = gui:FindFirstChild("NotifyHolder")
     if not holder then
         holder = create("Frame", {Parent = gui, Name = "NotifyHolder", BackgroundTransparency = 1, Size = UDim2.new(0, 300, 1, -40), Position = UDim2.new(1, -20, 0, 20), AnchorPoint = Vector2.new(1, 0)})
-        -- No UIListLayout, we calculate positions manually for perfect queue stacking
     end
 
     local msg = create("Frame", {Parent = holder, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = self.Theme.Surface, Position = UDim2.new(1, 50, 1, 0)})
@@ -680,8 +679,28 @@ function NovaUI:Notify(cfg)
     create("UIPadding", {Parent = msg, PaddingLeft = UDim.new(0, 18), PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)})
     local accent = create("Frame", {Parent = msg, Position = UDim2.new(0, -18, 0, 0), Size = UDim2.new(0, 3, 0, 0), BackgroundColor3 = self.Theme.Accent}); applyCorner(accent, 4)
 
-    create("TextLabel", {Parent = msg, Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = cfg.Title or "Notification", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left})
-    create("TextLabel", {Parent = msg, Position = UDim2.new(0, 0, 0, 20), Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = cfg.Content or "", Font = Enum.Font.Gotham, TextColor3 = self.Theme.Muted, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left})
+    local contentHolder = create("Frame", {Parent = msg, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y})
+    create("UIListLayout", {Parent = contentHolder, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder})
+
+    create("TextLabel", {Parent = contentHolder, LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = cfg.Title or "Notification", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left})
+    create("TextLabel", {Parent = contentHolder, LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = cfg.Content or "", Font = Enum.Font.Gotham, TextColor3 = self.Theme.Muted, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left})
+
+    local closed = false
+    local closeNotif
+
+    if cfg.Buttons then
+        local btnLayout = create("Frame", {Parent = contentHolder, LayoutOrder = 3, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 32)})
+        create("UIListLayout", {Parent = btnLayout, FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom})
+        for _, btnData in ipairs(cfg.Buttons) do
+            local nb = create("TextButton", {Parent = btnLayout, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 24), BackgroundColor3 = self.Theme.Background, Text = btnData.Name or "Btn", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 12})
+            create("UIPadding", {Parent = nb, PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)})
+            applyCorner(nb, 6); applyStroke(nb, self.Theme.Stroke, 1, 0.4)
+            connect(nb.MouseButton1Click, function()
+                if btnData.Callback then task.spawn(btnData.Callback) end
+                if closeNotif then closeNotif() end
+            end)
+        end
+    end
 
     table.insert(self.Notifications, msg)
     
@@ -692,44 +711,26 @@ function NovaUI:Notify(cfg)
             local h = n.AbsoluteSize.Y > 0 and n.AbsoluteSize.Y or 60
             yOffset = yOffset + h + 8
             animate(n, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 1, -yOffset)})
-    end
-
-    local yPos = self.NotifOffset or 0
-    local notif = create("Frame", {Parent = holder, Size = UDim2.new(0, 260, 0, 60), BackgroundColor3 = self.Theme.Surface, Position = UDim2.new(1, 400, 0, yPos)})
-    applyCorner(notif, 8); applyStroke(notif, self.Theme.Stroke, 1, 0.3)
-    create("UIPadding", {Parent = notif, PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12)})
-    local textHolder = create("Frame", {Parent = notif, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0)})
-    create("UIListLayout", {Parent = textHolder, Padding = UDim.new(0, 4)})
-    create("TextLabel", {Parent = textHolder, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 16), Font = Enum.Font.GothamBold, Text = cfg.Title or "Notification", TextColor3 = self.Theme.Text, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left})
-    local content = create("TextLabel", {Parent = textHolder, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 14), Font = Enum.Font.Gotham, Text = cfg.Content or "", TextColor3 = self.Theme.Muted, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left})
-
-    self.NotifOffset = self.NotifOffset + 10
-
-    if cfg.Buttons then
-        notif.Size = UDim2.new(0, 260, 0, 100)
-        local btnLayout = create("Frame", {Parent = notif, BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 1, -32)})
-        create("UIListLayout", {Parent = btnLayout, FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Right})
-        for _, btnData in ipairs(cfg.Buttons) do
-            local nb = create("TextButton", {Parent = btnLayout, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = self.Theme.Background, Text = btnData.Name or "Btn", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 12})
-            create("UIPadding", {Parent = nb, PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)})
-            applyCorner(nb, 6); local s = applyStroke(nb, self.Theme.Stroke, 1, 0.4)
-            connect(nb.MouseButton1Click, function()
-                if btnData.Callback then task.spawn(btnData.Callback) end
-                animate(notif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Position = UDim2.new(1, 400, 0, notif.AbsolutePosition.Y)})
-                task.delay(0.4, function() notif:Destroy() end)
-            end)
         end
     end
 
-    animate(notif, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = UDim2.new(1, -272, 0, yPos)})
-    
+    closeNotif = function()
+        if closed then return end; closed = true
+        animate(msg, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Position = UDim2.new(1, 50, msg.Position.Y.Scale, msg.Position.Y.Offset), BackgroundTransparency = 1})
+        for _, v in ipairs(msg:GetDescendants()) do if v:IsA("TextLabel") or v:IsA("TextButton") then animate(v, TweenInfo.new(0.3), {TextTransparency = 1, BackgroundTransparency = 1}) end end
+        if msg:FindFirstChild("UIStroke") then animate(msg.UIStroke, TweenInfo.new(0.3), {Transparency = 1}) end
+        task.wait(0.3)
+        local idx = table.find(self.Notifications, msg)
+        if idx then table.remove(self.Notifications, idx) end
+        msg:Destroy()
+        updateQueue()
+    end
+
+    updateQueue(); task.delay(0.05, updateQueue)
+    task.delay(0.1, function() animate(accent, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Size = UDim2.new(0, 3, 1, 0)}) end)
+
     if not cfg.Buttons then
-        task.delay(cfg.Duration or 3, function()
-            if notif and notif.Parent then
-                animate(notif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Position = UDim2.new(1, 400, 0, notif.AbsolutePosition.Y)})
-                task.delay(0.4, function() notif:Destroy() end)
-            end
-        end)
+        task.delay(cfg.Duration or 3, closeNotif)
     end
 end
 
