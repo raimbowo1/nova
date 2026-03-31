@@ -175,20 +175,7 @@ function NovaUI:Toggle(force)
         self.Hidden = not self.Hidden
     end
     animate(self.MainScale, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = self.Hidden and 0 or 1})
-    
-    if self.FloatingWidget then
-        if self.Hidden then
-            self.FloatingWidget.Visible = true
-            animate(self.FloatingWidget, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 48, 0, 48), BackgroundTransparency = 0, TextTransparency = 0})
-            if self.FloatingWidget:FindFirstChildOfClass("UIStroke") then animate(self.FloatingWidget:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.4), {Transparency = 0.5}) end
-            if self.FloatingWidget:FindFirstChildOfClass("ImageLabel") then animate(self.FloatingWidget:FindFirstChildOfClass("ImageLabel"), TweenInfo.new(0.4), {ImageTransparency = 0}) end
-        else
-            local twn = animate(self.FloatingWidget, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1, TextTransparency = 1})
-            if self.FloatingWidget:FindFirstChildOfClass("UIStroke") then animate(self.FloatingWidget:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.3), {Transparency = 1}) end
-            if self.FloatingWidget:FindFirstChildOfClass("ImageLabel") then animate(self.FloatingWidget:FindFirstChildOfClass("ImageLabel"), TweenInfo.new(0.3), {ImageTransparency = 1}) end
-            twn.Completed:Connect(function() if not self.Hidden then self.FloatingWidget.Visible = false end end)
-        end
-    end
+    if self.ToggleButton then animate(self.ToggleButton, TweenInfo.new(0.3), {BackgroundTransparency = self.Hidden and 0.5 or 0}) end
 end
 
 function NovaUI:Init()
@@ -350,20 +337,12 @@ function NovaUI:CreateWindow(cfg)
     connect(closeBtn.MouseButton1Click, function() NovaUI:Toggle(false) end)
 
     if cfg.UseToggleButton ~= false then
-        local fw = create("TextButton", { Parent = gui, Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.05, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = self.Theme.Surface, Text = "", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13, BackgroundTransparency = 1, TextTransparency = 1, Visible = false })
-        applyCorner(fw, 24); local mainStroke = applyStroke(fw, self.Theme.Stroke, 1, 1)
-        local glowStroke = applyStroke(fw, self.Theme.Accent, 2, 1); trackTheme("Accent", glowStroke, "Color")
-        task.spawn(function() while true do if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.2}) else glowStroke.Transparency = 1 end; task.wait(1.4); if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.85}) else glowStroke.Transparency = 1 end; task.wait(1.4) end end)
-        connect(fw.MouseButton1Click, function() NovaUI:Toggle() end)
-        makeDraggable(fw, fw)
-        
-        if cfg.Icon then
-            create("ImageLabel", {Parent = fw, Size = UDim2.new(1, -20, 1, -20), Position = UDim2.new(0, 10, 0, 10), BackgroundTransparency = 1, Image = cfg.Icon, ImageTransparency = 1})
-        else
-            fw.Text = cfg.ToggleButtonText or "UI"
-        end
-        
-        self.FloatingWidget = fw
+        local btn = create("TextButton", { Parent = gui, Size = UDim2.new(0, 48, 0, 48), Position = UDim2.new(0, 20, 0.5, 0), BackgroundColor3 = self.Theme.Surface, Text = cfg.ToggleButtonText or "UI", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13 })
+        applyCorner(btn, 24); local glowStroke = applyStroke(btn, self.Theme.Accent, 2, 0.7); trackTheme("Accent", glowStroke, "Color")
+        task.spawn(function() while true do animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.1}); task.wait(1.4); animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.85}); task.wait(1.4) end end)
+        connect(btn.MouseButton1Click, function() NovaUI:Toggle() end)
+        makeDraggable(btn, btn)
+        self.ToggleButton = btn
     end
 
     self.MainFrame = shadow; self.MainScale = scaleObj
@@ -826,23 +805,6 @@ function NovaUI:Notify(cfg)
 
     if not cfg.Buttons then
         task.delay(cfg.Duration or 3, closeNotif)
-    end
-end
-
-function NovaUI:SetWatermark(text)
-    if not self.Watermark then
-        local gui = self:_ensureGui()
-        local wmHolder = create("Frame", {Parent = gui, BackgroundColor3 = self.Theme.Background, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 26), Position = UDim2.new(0.5, 0, 0, 16), AnchorPoint = Vector2.new(0.5, 0)})
-        applyCorner(wmHolder, 8); applyStroke(wmHolder, self.Theme.Accent, 1, 0.5)
-        create("UIPadding", {Parent = wmHolder, PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14)})
-        local wmLbl = create("TextLabel", {Parent = wmHolder, BackgroundTransparency = 1, Size = UDim2.new(0, 0, 1, 0), AutomaticSize = Enum.AutomaticSize.X, Font = Enum.Font.GothamBold, Text = text, TextColor3 = self.Theme.Text, TextSize = 12})
-        self.Watermark = {Holder = wmHolder, Lbl = wmLbl}
-    end
-    if text == nil or text == "" then
-        self.Watermark.Holder.Visible = false
-    else
-        self.Watermark.Holder.Visible = true
-        self.Watermark.Lbl.Text = text
     end
 end
 
