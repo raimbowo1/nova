@@ -238,31 +238,57 @@ function NovaUI:CreateWindow(cfg)
     end)
     connect(searchOverlay.Changed, function()
         local q = searchOverlay.Text:lower()
+
+        local function fuzzy(s, query)
+            if query == "" then return true end
+            local idx = 1
+            for i = 1, #query do
+                local match = string.find(s, query:sub(i, i), idx, true)
+                if not match then return false end
+                idx = match + 1
+            end
+            return true
+        end
+
         if q == "" then
             for _, e in ipairs(NovaUI.Elements) do e.Visible = true; if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end end
             for _, t in ipairs(thisWindowTabs) do t.Button.Visible = true end
         else
+            -- 1: Evaluate normal elements using Fuzzy matching
+            for _, e in ipairs(NovaUI.Elements) do
+                if not e.Obj.Holder then
+                    e.Visible = fuzzy(e.Name, q)
+                    if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
+                end
+            end
+
             local firstMatch = nil
             local matchTabs = {}
 
-            -- Check elements and record matching tabs
+            -- 2: Evaluate Sections based on visible children
             for _, e in ipairs(NovaUI.Elements) do
-                e.Visible = string.find(e.Name, q) ~= nil
-                if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
-                
-                if e.Visible and e.Row and e.Row.Parent and e.Row.Parent.Parent and e.Row.Parent.Parent.Parent then
-                    local page = e.Row.Parent.Parent.Parent
-                    for _, t in ipairs(thisWindowTabs) do
-                        if t.Page == page then
-                            matchTabs[t] = true
-                            if not firstMatch then firstMatch = t end
-                            break
+                if e.Obj.Holder then
+                    local hasVis = false
+                    for _, child in ipairs(e.Obj.Holder:GetChildren()) do
+                        if child:IsA("GuiObject") and child.Visible then hasVis = true; break end
+                    end
+                    
+                    e.Visible = hasVis or fuzzy(e.Name, q)
+                    if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
+                    
+                    if e.Visible and e.Row and e.Row.Parent and e.Row.Parent:IsA("ScrollingFrame") then
+                        for _, t in ipairs(thisWindowTabs) do
+                            if t.Page == e.Row.Parent then
+                                matchTabs[t] = true
+                                if not firstMatch then firstMatch = t end
+                                break
+                            end
                         end
                     end
                 end
             end
 
-            -- Update tab visibility and auto-select
+            -- 3: Update tabs and strictly select first matching
             for _, t in ipairs(thisWindowTabs) do
                 t.Button.Visible = matchTabs[t] == true
             end
