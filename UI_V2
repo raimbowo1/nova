@@ -117,8 +117,8 @@ function NovaUI:HideTooltip()
     end)
 end
 
-function NovaUI:RegisterElement(obj, name, row)
-    table.insert(self.Elements, {Obj = obj, Name = name:lower(), Row = row, Visible = true, Deps = {}})
+function NovaUI:RegisterElement(obj, name, row, flagName)
+    table.insert(self.Elements, {Obj = obj, Name = name:lower(), Row = row, Visible = true, Deps = {}, Flag = flagName})
     local ref = self.Elements[#self.Elements]
     
     -- Dependency API
@@ -169,7 +169,11 @@ function NovaUI:SetAccent(color) self:SetTheme({Accent = color}) end
 
 function NovaUI:Toggle(force)
     if not self.MainScale then return end
-    self.Hidden = force == nil and not self.Hidden or not force
+    if force ~= nil then
+        self.Hidden = not force
+    else
+        self.Hidden = not self.Hidden
+    end
     animate(self.MainScale, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = self.Hidden and 0 or 1})
     if self.ToggleButton then animate(self.ToggleButton, TweenInfo.new(0.3), {BackgroundTransparency = self.Hidden and 0.5 or 0}) end
 end
@@ -427,7 +431,7 @@ function SectionMethods:AddToggle(cfg)
 
     connect(btn.MouseButton1Click, function() setToggle(not state) end)
     setToggle(state, true); table.insert(NovaUI.ThemeObjects.ToggleBoxes, {box, function() return state end})
-    return NovaUI:RegisterElement({Set = setToggle, Get = function() return state end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Set = setToggle, Get = function() return state end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddSlider(cfg)
@@ -458,7 +462,7 @@ function SectionMethods:AddSlider(cfg)
     connect(UserInputService.InputChanged, function(inp) if dragging and inp.UserInputType.Name:find("MouseMovement") then setVal(min + math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1) * (max - min)) end end)
 
     setVal(cfg.Default or min, true)
-    return NovaUI:RegisterElement({Set = setVal, Get = function() return math.clamp(math.floor((min + fill.Size.X.Scale * (max - min)) / inc + 0.5) * inc, min, max) end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Set = setVal, Get = function() return math.clamp(math.floor((min + fill.Size.X.Scale * (max - min)) / inc + 0.5) * inc, min, max) end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddProgressBar(cfg)
@@ -546,7 +550,7 @@ function SectionMethods:AddDropdown(cfg)
     buildOpts()
     if searchable then connect(searchBox.Changed, function() buildOpts(searchBox.Text) end) end
 
-    return NovaUI:RegisterElement({Refresh = function(newOpts) options = newOpts or {}; buildOpts() end, Get = function() return selected end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Refresh = function(newOpts) options = newOpts or {}; buildOpts() end, Get = function() return selected end, Set = function(val, skipCallback) selected = val; valLbl.Text = getValText(); buildOpts(); if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected end; if not skipCallback and cfg.Callback then task.spawn(cfg.Callback, selected) end end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddTextbox(cfg)
@@ -562,7 +566,7 @@ function SectionMethods:AddTextbox(cfg)
         if cfg.Callback then task.spawn(cfg.Callback, box.Text, enter) end
         if cfg.TextDisappear then box.Text = "" end
     end)
-    return NovaUI:RegisterElement({Set = function(v) box.Text = v end, Get = function() return box.Text end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Set = function(v, skipCallback) box.Text = v; if cfg.Flag then NovaUI.Flags[cfg.Flag] = box.Text end; if not skipCallback and cfg.Callback then task.spawn(cfg.Callback, box.Text, false) end end, Get = function() return box.Text end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddBind(cfg)
@@ -601,7 +605,7 @@ function SectionMethods:AddBind(cfg)
     connect(UserInputService.InputEnded, function(inp, gp)
         if mode == "Hold" and inp.KeyCode == bound and not gp then isActive = false; if cfg.Pressed then task.spawn(cfg.Pressed, false) end end
     end)
-    return NovaUI:RegisterElement({Get = function() return bound.Name end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Get = function() return bound.Name end, Set = function(val, skipCallback) bound = (type(val) == "string" and Enum.KeyCode[val]) or val or Enum.KeyCode.Unknown; btn.Text = bound.Name; if cfg.Flag then NovaUI.Flags[cfg.Flag] = bound.Name end; if not skipCallback and cfg.Callback then task.spawn(cfg.Callback, bound) end end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddColorPicker(cfg)
@@ -621,11 +625,12 @@ function SectionMethods:AddColorPicker(cfg)
         selected = Color3.fromHSV(h, s > 0 and s or 0.8, 1)
         animate(disp, TweenInfo.new(0.2), {BackgroundColor3 = selected})
         if cfg.ApplyAccent then NovaUI:SetTheme({Accent = selected}) end
-        if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected end
+        if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end
         if cfg.Callback then task.spawn(cfg.Callback, selected) end
     end)
+    if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end
 
-    return NovaUI:RegisterElement({Set = function(c) selected = c; disp.BackgroundColor3 = c end, Get = function() return selected end}, cfg.Name, row)
+    return NovaUI:RegisterElement({Set = function(c, skipCallback) if type(c) == "string" then pcall(function() c = Color3.fromHex(c) end) end; if typeof(c) ~= "Color3" then c = Color3.new(1,1,1) end; selected = c; animate(disp, TweenInfo.new(0.2), {BackgroundColor3 = selected}); if cfg.ApplyAccent then NovaUI:SetTheme({Accent = selected}) end; if cfg.Flag then NovaUI.Flags[cfg.Flag] = selected:ToHex() end; if not skipCallback and cfg.Callback then task.spawn(cfg.Callback, selected) end end, Get = function() return selected end}, cfg.Name, row, cfg.Flag)
 end
 
 function SectionMethods:AddParagraph(cfg)
@@ -699,8 +704,8 @@ function WindowMethods:LoadConfig(cfgName)
     for k, v in pairs(data) do
         NovaUI.Flags[k] = v
         for _, elem in ipairs(NovaUI.Elements) do
-            if elem.Obj.Set and elem.Obj.Get then
-                -- Try to find if elements map to this flag
+            if elem.Flag == k and elem.Obj.Set then
+                elem.Obj.Set(v, true)
             end
         end
     end
