@@ -174,17 +174,21 @@ function NovaUI:Toggle(force)
     else
         self.Hidden = not self.Hidden
     end
-    animate(self.MainScale, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = self.Hidden and 0 or 1})
+    local tInfo = TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+    animate(self.MainScale, tInfo, {Scale = self.Hidden and 0 or 1})
     
     if self.ToggleButton then
+        local btnScale = self.ToggleButton:FindFirstChildOfClass("UIScale")
         if self.Hidden then
             self.ToggleButton.Visible = true
-            animate(self.ToggleButton, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 48, 0, 48), BackgroundTransparency = 0, TextTransparency = 0})
-            if self.ToggleButton:FindFirstChildOfClass("UIStroke") then animate(self.ToggleButton:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.4), {Transparency = 0.5}) end
+            animate(self.ToggleButton, tInfo, {BackgroundTransparency = 0, TextTransparency = 0})
+            if btnScale then animate(btnScale, tInfo, {Scale = 1}) end
+            if self.ToggleButton:FindFirstChildOfClass("UIStroke") then animate(self.ToggleButton:FindFirstChildOfClass("UIStroke"), tInfo, {Transparency = 0.5}) end
         else
-            local twn = animate(self.ToggleButton, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1, TextTransparency = 1})
-            if self.ToggleButton:FindFirstChildOfClass("UIStroke") then animate(self.ToggleButton:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.3), {Transparency = 1}) end
-            twn.Completed:Connect(function() if not self.Hidden then self.ToggleButton.Visible = false end end)
+            animate(self.ToggleButton, tInfo, {BackgroundTransparency = 1, TextTransparency = 1})
+            if btnScale then animate(btnScale, tInfo, {Scale = 0}) end
+            if self.ToggleButton:FindFirstChildOfClass("UIStroke") then animate(self.ToggleButton:FindFirstChildOfClass("UIStroke"), tInfo, {Transparency = 1}) end
+            task.delay(0.4, function() if not self.Hidden then self.ToggleButton.Visible = false end end)
         end
     end
 end
@@ -348,7 +352,8 @@ function NovaUI:CreateWindow(cfg)
     connect(closeBtn.MouseButton1Click, function() NovaUI:Toggle(false) end)
 
     if cfg.UseToggleButton ~= false then
-        local btn = create("TextButton", { Parent = gui, Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0, 20, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = self.Theme.Surface, Text = cfg.ToggleButtonText or "UI", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13, BackgroundTransparency = 1, TextTransparency = 1, Visible = false })
+        local btn = create("TextButton", { Parent = gui, Size = UDim2.new(0, 48, 0, 48), Position = UDim2.new(0, 20, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = self.Theme.Surface, Text = cfg.ToggleButtonText or "UI", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13, BackgroundTransparency = 1, TextTransparency = 1, Visible = false })
+        create("UIScale", {Parent = btn, Scale = 0})
         applyCorner(btn, 24); local glowStroke = applyStroke(btn, self.Theme.Accent, 2, 1); trackTheme("Accent", glowStroke, "Color")
         task.spawn(function() while true do if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.2}) else glowStroke.Transparency = 1 end; task.wait(1.4); if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.85}) else glowStroke.Transparency = 1 end; task.wait(1.4) end end)
         connect(btn.MouseButton1Click, function() NovaUI:Toggle() end)
