@@ -1,4 +1,13 @@
--- NovaUI Premium v2.5.3 (Startup Theme Update)
+-- NovaUI Premium v2.5.5 (Default Sizing Cleanup)
+-- Changes from v2.5.5:
+--   [IMPROVE] Reverted the hardcoded mobile startup size back to responsive sizing
+--   [FIX] Example-driven size confusion cleaned up so library defaults stay flexible
+-- Changes from v2.5.4:
+--   [IMPROVE] Search and table filtering are now debounced to avoid unnecessary redraws
+--   [IMPROVE] Dropdown search reuses existing option rows instead of rebuilding them every keypress
+--   [FIX] Toggle button glow no longer uses a permanent background loop
+--   [FIX] Slider dragging updates reliably on both mouse and touch paths
+--   [FIX] Player tab event connections are cleaned up safely across re-creates
 -- Changes from v2.5.3:
 --   [FIX] Resize grip arrow now points along the correct diagonal
 --   [IMPROVE] Default startup theme returns to the original midnight-style palette
@@ -53,7 +62,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local NovaUI = {
-    Version = "2.5.3",
+    Version = "2.5.5",
     Connections = {},
     Flags = {},
     Elements = {},
@@ -214,8 +223,15 @@ local function animate(obj, info, props)
 end
 
 trackTheme = function(key, obj, prop)
-    if NovaUI.ThemeObjects[key] then
-        table.insert(NovaUI.ThemeObjects[key], {obj, prop})
+    local bucket = NovaUI.ThemeObjects[key]
+    if bucket then
+        for i = 1, #bucket do
+            local entry = bucket[i]
+            if entry[1] == obj and entry[2] == prop then
+                return
+            end
+        end
+        table.insert(bucket, {obj, prop})
     end
 end
 
@@ -469,8 +485,8 @@ function NovaUI:CreateWindow(cfg)
     end
 
     local requestedSize = cfg.Size and clampSize(cfg.Size.X.Offset, cfg.Size.Y.Offset) or nil
-    local compactSize = mobileMode and clampSize(560, 390) or clampSize(vp.X * 0.52, vp.Y * 0.62)
-    local balancedSize = mobileMode and clampSize(640, 430) or clampSize(vp.X * 0.60, vp.Y * 0.68)
+    local compactSize = mobileMode and clampSize(vp.X * 0.58, vp.Y * 0.56) or clampSize(vp.X * 0.52, vp.Y * 0.62)
+    local balancedSize = mobileMode and clampSize(vp.X * 0.64, vp.Y * 0.63) or clampSize(vp.X * 0.60, vp.Y * 0.68)
     local expandedSize = mobileMode and clampSize(vp.X * 0.78, vp.Y * 0.76) or clampSize(vp.X * 0.84, vp.Y * 0.84)
     local desktopDefault = requestedSize or clampSize(560, 390)
 
@@ -609,37 +625,71 @@ function NovaUI:CreateWindow(cfg)
         return true
     end
 
-    connect(searchOverlay.Changed, function()
-        local q = searchOverlay.Text:lower()
-        if q == "" then
-            for _, e in ipairs(NovaUI.Elements) do e.Visible = true; if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end end
-            for _, t in ipairs(thisWindowTabs) do t.Button.Visible = true end
-        else
-            for _, e in ipairs(NovaUI.Elements) do
-                if not e.Obj.Holder then
-                    e.Visible = fuzzy(e.Name, q)
-                    if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
+    local function elementBelongsToThisWindow(entry)
+        if not entry or not entry.Row then return false end
+        local node = entry.Row
+        while node do
+            if node:IsA("ScrollingFrame") then
+                for _, tab in ipairs(thisWindowTabs) do
+                    if tab.Page == node then
+                        return true
+                    end
                 end
             end
-            local firstMatch, matchTabs = nil, {}
-            for _, e in ipairs(NovaUI.Elements) do
-                if e.Obj.Holder then
-                    local hasVis = false
-                    for _, child in ipairs(e.Obj.Holder:GetChildren()) do
-                        if child:IsA("GuiObject") and child.Visible then hasVis = true; break end
+            node = node.Parent
+        end
+        return false
+    end
+
+    local searchRevision = 0
+    connect(searchOverlay:GetPropertyChangedSignal("Text"), function()
+        searchRevision = searchRevision + 1
+        local revision = searchRevision
+        task.delay(0.05, function()
+            if revision ~= searchRevision or not searchOverlay.Parent then return end
+            local q = searchOverlay.Text:lower()
+            if q == "" then
+                for _, e in ipairs(NovaUI.Elements) do
+                    if elementBelongsToThisWindow(e) then
+                        e.Visible = true
+                        if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
                     end
-                    e.Visible = hasVis or fuzzy(e.Name, q)
-                    if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
-                    if e.Visible and e.Row and e.Row.Parent and e.Row.Parent:IsA("ScrollingFrame") then
-                        for _, t in ipairs(thisWindowTabs) do
-                            if t.Page == e.Row.Parent then matchTabs[t] = true; if not firstMatch then firstMatch = t end; break end
+                end
+                for _, t in ipairs(thisWindowTabs) do t.Button.Visible = true end
+            else
+                for _, e in ipairs(NovaUI.Elements) do
+                    if elementBelongsToThisWindow(e) and not e.Obj.Holder then
+                        e.Visible = fuzzy(e.Name, q)
+                        if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
+                    end
+                end
+                local firstMatch, matchTabs = nil, {}
+                for _, e in ipairs(NovaUI.Elements) do
+                    if elementBelongsToThisWindow(e) and e.Obj.Holder then
+                        local hasVis = false
+                        for _, child in ipairs(e.Obj.Holder:GetChildren()) do
+                            if child:IsA("GuiObject") and child.Visible then
+                                hasVis = true
+                                break
+                            end
+                        end
+                        e.Visible = hasVis or fuzzy(e.Name, q)
+                        if e.Obj.ApplyDeps then e.Obj.ApplyDeps() end
+                        if e.Visible and e.Row and e.Row.Parent and e.Row.Parent:IsA("ScrollingFrame") then
+                            for _, t in ipairs(thisWindowTabs) do
+                                if t.Page == e.Row.Parent then
+                                    matchTabs[t] = true
+                                    if not firstMatch then firstMatch = t end
+                                    break
+                                end
+                            end
                         end
                     end
                 end
+                for _, t in ipairs(thisWindowTabs) do t.Button.Visible = matchTabs[t] == true end
+                if firstMatch and firstMatch.Select then firstMatch:Select() end
             end
-            for _, t in ipairs(thisWindowTabs) do t.Button.Visible = matchTabs[t] == true end
-            if firstMatch and firstMatch.Select then firstMatch:Select() end
-        end
+        end)
     end)
 
     -- Window controls
@@ -901,12 +951,15 @@ function NovaUI:CreateWindow(cfg)
         local btn = create("TextButton", {Parent = gui, Size = UDim2.new(0,48,0,48), Position = UDim2.new(0,20,0.5,0), AnchorPoint = Vector2.new(0,0.5), BackgroundColor3 = self.Theme.Surface, Text = cfg.ToggleButtonText or "UI", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13, BackgroundTransparency = 1, TextTransparency = 1, Visible = false})
         create("UIScale", {Parent = btn, Scale = 0})
         applyCorner(btn, 24); local glowStroke = applyStroke(btn, self.Theme.Accent, 2, 1); trackTheme("Accent", glowStroke, "Color")
-        task.spawn(function()
-            while true do
-                if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.2}) else glowStroke.Transparency = 1 end
-                task.wait(1.4)
-                if self.Hidden then animate(glowStroke, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.85}) else glowStroke.Transparency = 1 end
-                task.wait(1.4)
+        local glowClock = 0
+        connect(RunService.Heartbeat, function(dt)
+            if not btn.Parent or not glowStroke.Parent then return end
+            if self.Hidden then
+                glowClock = glowClock + dt * 2.25
+                glowStroke.Transparency = 0.52 + math.sin(glowClock * math.pi) * 0.18
+            else
+                glowClock = 0
+                glowStroke.Transparency = 1
             end
         end)
         connect(btn.MouseButton1Click, function() NovaUI:Toggle() end)
@@ -1006,12 +1059,22 @@ end
 
 -- FIX: CreatePlayerTab - connections stored and cleaned on re-call
 function WindowMethods:CreatePlayerTab(cfg)
-    local tab = self:CreateTab({Name = cfg.Name or "Players", Icon = cfg.Icon or "👥"})
+    cfg = cfg or {}
+    local tabName = cfg.Name or "Players"
+    self._PlayerTabConnections = self._PlayerTabConnections or {}
+    if self._PlayerTabConnections[tabName] then
+        for _, c in ipairs(self._PlayerTabConnections[tabName]) do
+            pcall(function() c:Disconnect() end)
+        end
+    end
+
+    local tab = self:CreateTab({Name = tabName, Icon = cfg.Icon or "👥"})
     local actions = cfg.Actions or {}
     local holder = tab.Page
     local playerConns = {}
 
     local function reload()
+        if not holder or not holder.Parent then return end
         for _, c in ipairs(holder:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
         for _, plr in ipairs(Players:GetPlayers()) do
             local row = create("Frame", {Parent = holder, Size = UDim2.new(1,0,0,46), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = NovaUI.Theme.ItemTransparency})
@@ -1027,11 +1090,15 @@ function WindowMethods:CreatePlayerTab(cfg)
         end
     end
 
-    -- FIX: disconnect old player connections before adding new
-    for _, c in ipairs(playerConns) do pcall(function() c:Disconnect() end) end
-    playerConns = {}
-    table.insert(playerConns, Players.PlayerAdded:Connect(function() if tab.Page.Visible then reload() end end))
-    table.insert(playerConns, Players.PlayerRemoving:Connect(function() task.wait(); if tab.Page.Visible then reload() end end))
+    table.insert(playerConns, connect(Players.PlayerAdded, function()
+        if tab.Page.Visible then reload() end
+    end))
+    table.insert(playerConns, connect(Players.PlayerRemoving, function()
+        task.defer(function()
+            if tab.Page.Visible then reload() end
+        end)
+    end))
+    self._PlayerTabConnections[tabName] = playerConns
 
     local oldSel = tab.Select
     tab.Select = function(selfArg) oldSel(); reload() end
@@ -1184,6 +1251,7 @@ function SectionMethods:AddSlider(cfg)
 
     local dragging = false
     local activeInput
+    local activeInputType
     local hitBox = create("TextButton", {Parent = row, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = ""})
     local function updateFromPosition(positionX)
         setVal(min + math.clamp((positionX - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1) * (max - min))
@@ -1195,27 +1263,35 @@ function SectionMethods:AddSlider(cfg)
             local abs = valBox.AbsolutePosition; local sz = valBox.AbsoluteSize
             if mp.X >= abs.X and mp.X <= abs.X + sz.X and mp.Y >= abs.Y and mp.Y <= abs.Y + sz.Y then return end
             dragging = true
-            activeInput = inp
+            activeInputType = inp.UserInputType
+            activeInput = inp.UserInputType == Enum.UserInputType.Touch and inp or nil
             animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobExpandedSize,0,knobExpandedSize)})
             updateFromPosition(inp.Position.X)
             inp.Changed:Connect(function()
                 if inp.UserInputState == Enum.UserInputState.End then
                     dragging = false
                     activeInput = nil
+                    activeInputType = nil
                     animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobSize,0,knobSize)})
                 end
             end)
         end
     end)
+    connect(hitBox.InputChanged, function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
+            activeInput = inp
+        end
+    end)
     connect(hitBox.InputEnded, function(inp)
-        if inp == activeInput then
+        if inp == activeInput or inp.UserInputType == activeInputType then
             dragging = false
             activeInput = nil
+            activeInputType = nil
             animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobSize,0,knobSize)})
         end
     end)
     connect(UserInputService.InputChanged, function(inp)
-        if dragging and inp == activeInput then
+        if dragging and ((activeInputType == Enum.UserInputType.MouseButton1 and inp.UserInputType == Enum.UserInputType.MouseMovement) or inp == activeInput) then
             updateFromPosition(inp.Position.X)
         end
     end)
@@ -1538,32 +1614,40 @@ function SectionMethods:AddDropdown(cfg)
             Button = btn,
             Title = title
         }
+        return Dropdown.Buttons[option]
     end
 
-    local function clearButtons()
-        for _, data in pairs(Dropdown.Buttons) do
-            if data.Button and data.Button.Parent then
-                data.Button:Destroy()
-            end
-        end
-        Dropdown.Buttons = {}
+    local function ensureOptionButton(option)
+        return Dropdown.Buttons[option] or addOptionButton(option)
     end
 
     local function rebuildOptions(filterText)
-        clearButtons()
-
         local visible = 0
-        for _, option in ipairs(Dropdown.Options) do
-            local text = tostring(option)
+        local validOptions = {}
+        local needle = filterText and string.lower(filterText) or ""
+        for order, option in ipairs(Dropdown.Options) do
+            validOptions[option] = true
+            local data = ensureOptionButton(option)
+            local text = string.lower(tostring(option))
             local matches = true
 
-            if filterText and filterText ~= "" then
-                matches = string.find(string.lower(text), string.lower(filterText), 1, true) ~= nil
+            if needle ~= "" then
+                matches = string.find(text, needle, 1, true) ~= nil
             end
 
+            data.Button.LayoutOrder = order
+            data.Button.Visible = matches
             if matches then
-                addOptionButton(option)
                 visible += 1
+            end
+        end
+
+        for option, data in pairs(Dropdown.Buttons) do
+            if not validOptions[option] then
+                if data.Button and data.Button.Parent then
+                    data.Button:Destroy()
+                end
+                Dropdown.Buttons[option] = nil
             end
         end
 
@@ -1579,8 +1663,14 @@ function SectionMethods:AddDropdown(cfg)
     end
 
     if searchable and searchBox then
+        local searchRevision = 0
         connect(searchBox:GetPropertyChangedSignal("Text"), function()
-            rebuildOptions(searchBox.Text)
+            searchRevision = searchRevision + 1
+            local revision = searchRevision
+            task.delay(0.05, function()
+                if revision ~= searchRevision or not searchBox.Parent then return end
+                rebuildOptions(searchBox.Text)
+            end)
         end)
     end
 
@@ -1897,6 +1987,7 @@ function SectionMethods:AddTable(cfg)
     local sortCol = nil
     local sortAsc = true
     local filter = ""
+    local renderTable
 
     local containerH = cfg.Height or 160
     local row = makeRow(self.Holder, 0); row.AutomaticSize = Enum.AutomaticSize.None; row.Size = UDim2.new(1,0,0,containerH + 46)
@@ -1907,7 +1998,16 @@ function SectionMethods:AddTable(cfg)
     -- Optional search box
     if cfg.Searchable then
         local sb = create("TextBox", {Parent = row, Position = UDim2.new(1,-140,0,4), Size = UDim2.new(0,128,0,22), BackgroundColor3 = NovaUI.Theme.Surface, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Text, PlaceholderText = "Filter...", PlaceholderColor3 = NovaUI.Theme.Muted, TextSize = 11, Text = ""}); applyCorner(sb, 4); applyStroke(sb, NovaUI.Theme.Stroke, 1, 0.5)
-        connect(sb.Changed, function() filter = sb.Text:lower(); renderTable() end)
+        local filterRevision = 0
+        connect(sb:GetPropertyChangedSignal("Text"), function()
+            filterRevision = filterRevision + 1
+            local revision = filterRevision
+            task.delay(0.05, function()
+                if revision ~= filterRevision or not sb.Parent then return end
+                filter = sb.Text:lower()
+                if renderTable then renderTable() end
+            end)
+        end)
     end
 
     local tableFrame = create("ScrollingFrame", {Parent = row, Position = UDim2.new(0,6,0,30), Size = UDim2.new(1,-12,0,containerH), BackgroundColor3 = NovaUI.Theme.Surface, ScrollBarThickness = 2, ScrollBarImageColor3 = NovaUI.Theme.Accent, AutomaticCanvasSize = Enum.AutomaticSize.Y}); applyCorner(tableFrame, 6); trackTheme("Accent", tableFrame, "ScrollBarImageColor3")
@@ -1928,7 +2028,7 @@ function SectionMethods:AddTable(cfg)
     create("UIListLayout", {Parent = tableFrame, Padding = UDim.new(0,1), SortOrder = Enum.SortOrder.LayoutOrder})
 
     local rowObjs = {}
-    function renderTable()
+    renderTable = function()
         for _, r in ipairs(rowObjs) do r:Destroy() end; rowObjs = {}
         local filtered = {}
         for _, dataRow in ipairs(data) do
