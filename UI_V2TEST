@@ -1,4 +1,9 @@
--- NovaUI Premium v2.5.1 (Shell Polish Update)
+-- NovaUI Premium v2.5.2 (Mobile Layout Update)
+-- Changes from v2.5.2:
+--   [IMPROVE] Mobile windows now start smaller and more condensed while keeping the sidebar expanded
+--   [IMPROVE] Footer player card is simpler and no longer shows the unused accent status dot
+--   [IMPROVE] Resize handle now uses a clearer diagonal arrow style
+--   [IMPROVE] Mobile tab pages can start without the extra page header for a tighter layout
 -- Changes from v2.5.1:
 --   [IMPROVE] Simplified top bar controls and removed built-in size switcher button
 --   [IMPROVE] Footer profile card now truncates long names cleanly without overlap
@@ -44,7 +49,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local NovaUI = {
-    Version = "2.5.1",
+    Version = "2.5.2",
     Connections = {},
     Flags = {},
     Elements = {},
@@ -460,9 +465,9 @@ function NovaUI:CreateWindow(cfg)
     end
 
     local requestedSize = cfg.Size and clampSize(cfg.Size.X.Offset, cfg.Size.Y.Offset) or nil
-    local compactSize = clampSize(vp.X * 0.52, vp.Y * 0.62)
-    local balancedSize = clampSize(vp.X * (mobileMode and 0.64 or 0.60), vp.Y * (mobileMode and 0.74 or 0.68))
-    local expandedSize = clampSize(vp.X * 0.84, vp.Y * 0.84)
+    local compactSize = mobileMode and clampSize(vp.X * 0.58, vp.Y * 0.56) or clampSize(vp.X * 0.52, vp.Y * 0.62)
+    local balancedSize = mobileMode and clampSize(vp.X * 0.64, vp.Y * 0.63) or clampSize(vp.X * 0.60, vp.Y * 0.68)
+    local expandedSize = mobileMode and clampSize(vp.X * 0.78, vp.Y * 0.76) or clampSize(vp.X * 0.84, vp.Y * 0.84)
     local desktopDefault = requestedSize or clampSize(560, 390)
 
     local sizeModes = mobileMode and {
@@ -475,22 +480,33 @@ function NovaUI:CreateWindow(cfg)
         {Name = "Wide",    Size = expandedSize,                Glyph = "⬒"},
     }
 
-    local sizeModeIndex = mobileMode and 2 or 1
+    local sizeModeIndex = 1
     local currentSize = requestedSize or sizeModes[sizeModeIndex].Size
     local function getSidebarExpandedWidth()
-        local base = currentSize.X.Offset < (mobileMode and 430 or 450) and (mobileMode and 112 or 120) or (mobileMode and 132 or 165)
+        local base
+        if mobileMode then
+            if currentSize.X.Offset < 380 then
+                base = 118
+            elseif currentSize.X.Offset < 460 then
+                base = 128
+            else
+                base = 140
+            end
+        else
+            base = currentSize.X.Offset < 450 and 120 or 165
+        end
         return base + 12
     end
-    local sidebarCollapsedWidth = mobileMode and 56 or 60
-    local panelInset = mobileMode and 7 or 8
-    local panelGap = mobileMode and 8 or 10
-    local topbarHeight = mobileMode and 62 or 58
+    local sidebarCollapsedWidth = mobileMode and 54 or 60
+    local panelInset = mobileMode and 6 or 8
+    local panelGap = mobileMode and 7 or 10
+    local topbarHeight = mobileMode and 58 or 58
     local contentTop = topbarHeight + panelInset + 4
     local bottomInset = panelInset
-    local footerHeight = mobileMode and 60 or 68
-    local iconButtonSize = mobileMode and 38 or 36
-    local searchBoxHeight = mobileMode and 34 or 32
-    local controlGap = 8
+    local footerHeight = mobileMode and 56 or 68
+    local iconButtonSize = mobileMode and 34 or 36
+    local searchBoxHeight = mobileMode and 30 or 32
+    local controlGap = mobileMode and 6 or 8
     local controlsWidth = iconButtonSize * 3 + controlGap * 2
     local thisWindowTabs = {}
 
@@ -507,7 +523,7 @@ function NovaUI:CreateWindow(cfg)
         ScaleType = Enum.ScaleType.Slice,
         SliceCenter = Rect.new(49,49,450,450),
         AnchorPoint = Vector2.new(0.5,0.5),
-        Position = cfg.Position or (mobileMode and UDim2.new(0.5,0,0.54,0) or UDim2.new(0.5,0,0.5,0)),
+        Position = cfg.Position or (mobileMode and UDim2.new(0.5,0,0.52,0) or UDim2.new(0.5,0,0.5,0)),
         Size = shadowSizeFromWindow(currentSize)
     })
     local scaleObj = create("UIScale", {Parent = shadow, Scale = 0})
@@ -657,7 +673,8 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Stroke", sidebarFooterStroke, "Color")
     applyGlassOverlay(sidebarFooter, 12, 0.982, 0.995)
 
-    local footerAvatarSize = mobileMode and 38 or 42
+    local footerAvatarSize = mobileMode and 34 or 42
+    local footerTextX = mobileMode and 48 or 58
     local footerAvatar = create("ImageLabel", {
         Parent = sidebarFooter,
         Size = UDim2.new(0, footerAvatarSize, 0, footerAvatarSize),
@@ -674,12 +691,13 @@ function NovaUI:CreateWindow(cfg)
     local footerName = create("TextLabel", {
         Parent = sidebarFooter,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 56, 0, mobileMode and 10 or 12),
-        Size = UDim2.new(1, -(footerAvatarSize + 34), 0, 18),
+        Position = UDim2.new(0, footerTextX, 0, mobileMode and 10 or 12),
+        Size = UDim2.new(1, -(footerTextX + 10), 0, 18),
         Font = Enum.Font.GothamBold,
         Text = LocalPlayer.DisplayName,
         TextColor3 = self.Theme.Text,
-        TextSize = mobileMode and 12 or 13,
+        TextScaled = mobileMode,
+        TextSize = mobileMode and 11 or 13,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left
     })
@@ -687,28 +705,21 @@ function NovaUI:CreateWindow(cfg)
     local footerHandle = create("TextLabel", {
         Parent = sidebarFooter,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 56, 0, mobileMode and 28 or 31),
-        Size = UDim2.new(1, -(footerAvatarSize + 34), 0, 14),
+        Position = UDim2.new(0, footerTextX, 0, mobileMode and 26 or 31),
+        Size = UDim2.new(1, -(footerTextX + 10), 0, 14),
         Font = Enum.Font.Gotham,
         Text = "@"..LocalPlayer.Name,
         TextColor3 = self.Theme.Muted,
-        TextSize = 11,
+        TextScaled = mobileMode,
+        TextSize = mobileMode and 10 or 11,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left
     })
     trackTheme("Muted", footerHandle, "TextColor3")
-    local footerStatus = create("Frame", {
-        Parent = sidebarFooter,
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -12, 0.5, 0),
-        Size = UDim2.new(0, mobileMode and 10 or 11, 0, mobileMode and 10 or 11),
-        BackgroundColor3 = self.Theme.Accent,
-        BackgroundTransparency = 0.12
-    })
-    applyCorner(footerStatus, 12)
-    local footerStatusStroke = applyStroke(footerStatus, self.Theme.Accent, 1, 0.25)
-    trackTheme("Accent", footerStatus, "BackgroundColor3")
-    trackTheme("Accent", footerStatusStroke, "Color")
+    if mobileMode then
+        create("UITextSizeConstraint", {Parent = footerName, MaxTextSize = 11, MinTextSize = 8})
+        create("UITextSizeConstraint", {Parent = footerHandle, MaxTextSize = 10, MinTextSize = 8})
+    end
 
     local contentShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset + getSidebarExpandedWidth() + panelGap,0,contentTop), Size = UDim2.new(1,-(panelInset + getSidebarExpandedWidth() + panelGap + panelInset),1,-(contentTop + bottomInset)), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency, ClipsDescendants = true})
     applyCorner(contentShell, 14)
@@ -718,10 +729,10 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Stroke", contentStroke, "Color")
     applyGlassOverlay(contentShell, 14, 0.978, 0.993)
 
-    local contentHolder = create("Frame", {Parent = contentShell, BackgroundTransparency = 1, Position = UDim2.new(0,mobileMode and 12 or 14,0,mobileMode and 12 or 14), Size = UDim2.new(1,-(mobileMode and 24 or 28),1,-(mobileMode and 24 or 28)), ClipsDescendants = true})
+    local contentHolder = create("Frame", {Parent = contentShell, BackgroundTransparency = 1, Position = UDim2.new(0,mobileMode and 10 or 14,0,mobileMode and 10 or 14), Size = UDim2.new(1,-(mobileMode and 20 or 28),1,-(mobileMode and 20 or 28)), ClipsDescendants = true})
 
     -- Sidebar collapse
-    local sidebarOpen = not mobileMode
+    local sidebarOpen = cfg.StartCollapsed == true and false or true
     local minimized = false
 
     local function applyWindowSize(newSize, instant)
@@ -757,8 +768,6 @@ function NovaUI:CreateWindow(cfg)
             footerAvatar.Position = sidebarOpen and UDim2.new(0, 8, 0.5, -footerAvatarSize / 2) or UDim2.new(0.5, -footerAvatarSize / 2, 0.5, -footerAvatarSize / 2)
             footerName.TextTransparency = sidebarOpen and 0 or 1
             footerHandle.TextTransparency = sidebarOpen and 0 or 1
-            footerStatus.BackgroundTransparency = sidebarOpen and 0.12 or 1
-            footerStatusStroke.Transparency = sidebarOpen and 0.25 or 1
         else
             animate(menuBtn, TweenInfo.new(0.3), {Rotation = sidebarOpen and 0 or 90})
             animate(sidebarShell, transition, {Size = UDim2.new(0, activeSidebarWidth, 1, -(contentTop + bottomInset))})
@@ -766,8 +775,6 @@ function NovaUI:CreateWindow(cfg)
             animate(footerAvatar, TweenInfo.new(0.32, Enum.EasingStyle.Quint), {Position = sidebarOpen and UDim2.new(0, 8, 0.5, -footerAvatarSize / 2) or UDim2.new(0.5, -footerAvatarSize / 2, 0.5, -footerAvatarSize / 2)})
             animate(footerName, TweenInfo.new(0.28), {TextTransparency = sidebarOpen and 0 or 1})
             animate(footerHandle, TweenInfo.new(0.28), {TextTransparency = sidebarOpen and 0 or 1})
-            animate(footerStatus, TweenInfo.new(0.28), {BackgroundTransparency = sidebarOpen and 0.12 or 1})
-            animate(footerStatusStroke, TweenInfo.new(0.28), {Transparency = sidebarOpen and 0.25 or 1})
         end
         for _, tab in ipairs(thisWindowTabs) do
             if tab.LabelText then
@@ -831,22 +838,42 @@ function NovaUI:CreateWindow(cfg)
         Parent = root,
         AnchorPoint = Vector2.new(1,1),
         Position = UDim2.new(1, mobileMode and -8 or -6, 1, mobileMode and -8 or -6),
-        Size = UDim2.new(0, mobileMode and 30 or 24, 0, mobileMode and 30 or 24),
-        BackgroundColor3 = self.Theme.Surface,
-        BackgroundTransparency = self.Theme.ItemTransparency,
-        Text = "⤡",
-        Font = Enum.Font.GothamBold,
-        TextColor3 = self.Theme.Muted,
-        TextSize = mobileMode and 15 or 13,
+        Size = UDim2.new(0, mobileMode and 30 or 26, 0, mobileMode and 30 or 26),
+        BackgroundTransparency = 1,
+        Text = "",
         ZIndex = 5,
         AutoButtonColor = false
     })
-    applyCorner(resizeHandle, mobileMode and 10 or 8)
-    local resizeStroke = applyStroke(resizeHandle, self.Theme.Stroke, 1, 0.45)
-    trackTheme("Surface", resizeHandle, "BackgroundColor3")
-    trackTheme("ItemTransparency", resizeHandle, "BackgroundTransparency")
-    trackTheme("Muted", resizeHandle, "TextColor3")
-    trackTheme("Stroke", resizeStroke, "Color")
+    local resizeHaloBaseTransparency = mobileMode and math.max(0.18, self.Theme.ItemTransparency - 0.08) or 1
+    local resizeHaloHoverTransparency = mobileMode and math.max(0.08, resizeHaloBaseTransparency - 0.10) or 0.9
+    local resizeHalo = create("Frame", {
+        Parent = resizeHandle,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = self.Theme.Surface,
+        BackgroundTransparency = resizeHaloBaseTransparency,
+        ZIndex = 5
+    })
+    applyCorner(resizeHalo, mobileMode and 10 or 8)
+    local resizeHaloStroke = applyStroke(resizeHalo, self.Theme.Stroke, 1, mobileMode and 0.55 or 1)
+    trackTheme("Surface", resizeHalo, "BackgroundColor3")
+    trackTheme("Stroke", resizeHaloStroke, "Color")
+
+    local resizeIcon = create("TextLabel", {
+        Parent = resizeHandle,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Font = Enum.Font.SourceSansBold,
+        Rotation = -45,
+        Text = "↔",
+        TextColor3 = self.Theme.Muted,
+        TextSize = mobileMode and 20 or 18,
+        ZIndex = 6
+    })
+    trackTheme("Muted", resizeIcon, "TextColor3")
     makeResizable(resizeHandle, shadow, mobileMode and Vector2.new(360, 300) or Vector2.new(420, 320), function(newShadowSize)
         currentSize = UDim2.new(0, math.max(minWidth, newShadowSize.X.Offset - 40), 0, math.max(minHeight, newShadowSize.Y.Offset - 40))
         if self.CurrentWindow then
@@ -855,10 +882,14 @@ function NovaUI:CreateWindow(cfg)
         refreshWindowLayout(true)
     end)
     connect(resizeHandle.MouseEnter, function()
-        animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Accent, BackgroundTransparency = math.max(0.1, self.Theme.ItemTransparency - 0.12)})
+        animate(resizeHalo, TweenInfo.new(0.2), {BackgroundTransparency = resizeHaloHoverTransparency})
+        animate(resizeHaloStroke, TweenInfo.new(0.2), {Transparency = mobileMode and 0.3 or 0.5})
+        animate(resizeIcon, TweenInfo.new(0.2), {TextColor3 = self.Theme.Accent})
     end)
     connect(resizeHandle.MouseLeave, function()
-        animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Muted, BackgroundTransparency = self.Theme.ItemTransparency})
+        animate(resizeHalo, TweenInfo.new(0.2), {BackgroundTransparency = resizeHaloBaseTransparency})
+        animate(resizeHaloStroke, TweenInfo.new(0.2), {Transparency = mobileMode and 0.55 or 1})
+        animate(resizeIcon, TweenInfo.new(0.2), {TextColor3 = self.Theme.Muted})
     end)
 
     -- Toggle button
@@ -912,7 +943,12 @@ function WindowMethods:CycleSize() if self.CycleWindowSize then self.CycleWindow
 function WindowMethods:CreateTab(cfg)
     cfg = cfg or {}
     local mobileMode = self.MobileMode == true
-    local tabHeight = mobileMode and 44 or 40
+    local showPageHeader = cfg.ShowHeader
+    if showPageHeader == nil then
+        showPageHeader = not mobileMode
+    end
+
+    local tabHeight = mobileMode and 42 or 40
     local tabBtn = create("TextButton", {Parent = self.Sidebar, Size = UDim2.new(1,0,0,tabHeight), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = 1, Text = "", AutoButtonColor = false})
     applyCorner(tabBtn, 10)
     local tabStroke = applyStroke(tabBtn, NovaUI.Theme.Stroke, 1, 1)
@@ -924,14 +960,17 @@ function WindowMethods:CreateTab(cfg)
     local indicator = create("Frame", {Parent = tabBtn, Position = UDim2.new(0,0,0.5,-(mobileMode and 12 or 10)), Size = UDim2.new(0,3,0,0), BackgroundColor3 = NovaUI.Theme.Accent, BorderSizePixel = 0}); applyCorner(indicator, 2); trackTheme("Accent", indicator, "BackgroundColor3")
 
     local page = create("ScrollingFrame", {Parent = self.Content, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false, Position = UDim2.new(0.05,0,0,0), ScrollBarThickness = 2, ScrollBarImageColor3 = NovaUI.Theme.Accent, AutomaticCanvasSize = Enum.AutomaticSize.Y})
-    create("UIListLayout", {Parent = page, Padding = UDim.new(0,12), SortOrder = Enum.SortOrder.LayoutOrder}); trackTheme("Accent", page, "ScrollBarImageColor3")
-    create("UIPadding", {Parent = page, PaddingTop = UDim.new(0,mobileMode and 4 or 6), PaddingBottom = UDim.new(0,12), PaddingRight = UDim.new(0,6), PaddingLeft = UDim.new(0,2)})
+    create("UIListLayout", {Parent = page, Padding = UDim.new(0,mobileMode and 10 or 12), SortOrder = Enum.SortOrder.LayoutOrder}); trackTheme("Accent", page, "ScrollBarImageColor3")
+    create("UIPadding", {Parent = page, PaddingTop = UDim.new(0,showPageHeader and (mobileMode and 4 or 6) or (mobileMode and 2 or 4)), PaddingBottom = UDim.new(0,mobileMode and 10 or 12), PaddingRight = UDim.new(0,6), PaddingLeft = UDim.new(0,2)})
 
-    local pageTitle = create("TextLabel", {Parent = page, LayoutOrder = -100, Size = UDim2.new(1,-6,0,mobileMode and 24 or 28), BackgroundTransparency = 1, Text = cfg.Title or cfg.Name or "Tab", Font = Enum.Font.GothamBlack, TextColor3 = NovaUI.Theme.Text, TextSize = mobileMode and 21 or 24, TextXAlignment = Enum.TextXAlignment.Left})
-    trackTheme("Text", pageTitle, "TextColor3")
+    local pageTitle
+    if showPageHeader then
+        pageTitle = create("TextLabel", {Parent = page, LayoutOrder = -100, Size = UDim2.new(1,-6,0,mobileMode and 22 or 28), BackgroundTransparency = 1, Text = cfg.Title or cfg.Name or "Tab", Font = Enum.Font.GothamBlack, TextColor3 = NovaUI.Theme.Text, TextSize = mobileMode and 18 or 24, TextXAlignment = Enum.TextXAlignment.Left})
+        trackTheme("Text", pageTitle, "TextColor3")
+    end
 
-    if cfg.Description then
-        local pageDescription = create("TextLabel", {Parent = page, LayoutOrder = -99, Size = UDim2.new(1,-6,0,18), BackgroundTransparency = 1, Text = cfg.Description, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = mobileMode and 11 or 12, TextXAlignment = Enum.TextXAlignment.Left})
+    if showPageHeader and cfg.Description then
+        local pageDescription = create("TextLabel", {Parent = page, LayoutOrder = -99, Size = UDim2.new(1,-6,0,mobileMode and 16 or 18), BackgroundTransparency = 1, Text = cfg.Description, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = mobileMode and 11 or 12, TextXAlignment = Enum.TextXAlignment.Left})
         trackTheme("Muted", pageDescription, "TextColor3")
     end
 
@@ -2195,7 +2234,7 @@ function WindowMethods:CreateSettingsTab()
     -- Info section
     local infoSection = tab:CreateSection({Name = "About"})
     infoSection:AddParagraph({Title = "NovaUI Premium", Content = "Version "..NovaUI.Version.."\nA feature-rich, themeable UI library for Roblox.\nBuilt with ❤️ using pure Lua."})
-    infoSection:AddParagraph({Title = "Tips", Content = "Drag the bottom-right arrow grip to resize the window. On touch devices the sidebar starts compact to keep more of the game visible."})
+    infoSection:AddParagraph({Title = "Tips", Content = "Drag the bottom-right arrow grip to resize the window. The sidebar now starts expanded by default, and mobile tabs use a tighter layout to keep more of the game visible."})
 
     return tab
 end
