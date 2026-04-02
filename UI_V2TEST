@@ -1,4 +1,10 @@
--- NovaUI Premium v2.4 (Glass Refresh)
+-- NovaUI Premium v2.5 (Mobile Glass Update)
+-- Changes from v2.4:
+--   [NEW] Mobile-first window sizing with built-in size cycling and touch resize support
+--   [NEW] Sidebar player card with local Roblox avatar + username
+--   [IMPROVE] Default glass transparency, contrast, and touch hit areas
+--   [FIX] Sliders now drag correctly on touch devices
+--   [FIX] Dropdown readability and theme contrast improved
 -- Changes from v2.3:
 --   [NEW] Glass-style panel transparency controls in Theme / presets
 --   [NEW] Tab page titles (with optional descriptions) for clearer navigation
@@ -33,33 +39,35 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local NovaUI = {
-    Version = "2.4.0",
+    Version = "2.5.0",
     Connections = {},
     Flags = {},
     Elements = {},
     ActiveTooltip = nil,
     ActiveContextMenu = nil,
     Theme = {
-        Background  = Color3.fromRGB(25, 25, 33),
-        Surface     = Color3.fromRGB(33, 33, 44),
-        SurfaceHover= Color3.fromRGB(42, 42, 54),
-        Stroke      = Color3.fromRGB(56, 56, 72),
-        Accent      = Color3.fromRGB(120, 90, 255),
-        Text        = Color3.fromRGB(250, 250, 255),
-        Muted       = Color3.fromRGB(160, 160, 180),
+        Background  = Color3.fromRGB(14, 20, 34),
+        Surface     = Color3.fromRGB(22, 30, 48),
+        SurfaceHover= Color3.fromRGB(34, 45, 70),
+        Stroke      = Color3.fromRGB(73, 93, 132),
+        Accent      = Color3.fromRGB(76, 170, 255),
+        Text        = Color3.fromRGB(244, 248, 255),
+        Muted       = Color3.fromRGB(173, 189, 219),
         Success     = Color3.fromRGB(80, 210, 130),
         Danger      = Color3.fromRGB(230, 90, 90),
-        WindowTransparency  = 0.12,
-        PanelTransparency   = 0.16,
-        SectionTransparency = 0.22,
-        ItemTransparency    = 0.30,
+        WindowTransparency  = 0.26,
+        PanelTransparency   = 0.30,
+        SectionTransparency = 0.36,
+        ItemTransparency    = 0.42,
     },
     Presets = {
-        Dark     = {Background=Color3.fromRGB(25,25,33),   Surface=Color3.fromRGB(33,33,44),    SurfaceHover=Color3.fromRGB(42,42,54),    Stroke=Color3.fromRGB(56,56,72),    Text=Color3.fromRGB(250,250,255), Muted=Color3.fromRGB(160,160,180), WindowTransparency=0.12, PanelTransparency=0.16, SectionTransparency=0.22, ItemTransparency=0.30},
-        Light    = {Background=Color3.fromRGB(240,240,245),Surface=Color3.fromRGB(255,255,255),  SurfaceHover=Color3.fromRGB(230,230,235), Stroke=Color3.fromRGB(200,200,210), Text=Color3.fromRGB(20,20,25),    Muted=Color3.fromRGB(100,100,110), WindowTransparency=0.05, PanelTransparency=0.08, SectionTransparency=0.12, ItemTransparency=0.18},
-        Midnight = {Background=Color3.fromRGB(10,10,14),   Surface=Color3.fromRGB(15,15,20),     SurfaceHover=Color3.fromRGB(22,22,28),    Stroke=Color3.fromRGB(30,30,40),    Text=Color3.fromRGB(230,230,240), Muted=Color3.fromRGB(120,120,130), WindowTransparency=0.18, PanelTransparency=0.22, SectionTransparency=0.28, ItemTransparency=0.34},
-        Crimson  = {Background=Color3.fromRGB(20,10,10),   Surface=Color3.fromRGB(30,15,15),     SurfaceHover=Color3.fromRGB(40,20,20),    Stroke=Color3.fromRGB(60,30,30),    Text=Color3.fromRGB(255,240,240), Muted=Color3.fromRGB(180,130,130), Accent=Color3.fromRGB(220,60,60), WindowTransparency=0.12, PanelTransparency=0.16, SectionTransparency=0.22, ItemTransparency=0.30},
-        Ocean    = {Background=Color3.fromRGB(8,16,28),    Surface=Color3.fromRGB(12,24,42),     SurfaceHover=Color3.fromRGB(18,34,58),    Stroke=Color3.fromRGB(30,55,90),    Text=Color3.fromRGB(220,240,255), Muted=Color3.fromRGB(100,150,200), Accent=Color3.fromRGB(40,160,240), WindowTransparency=0.16, PanelTransparency=0.18, SectionTransparency=0.24, ItemTransparency=0.30},
+        Dark     = {Background=Color3.fromRGB(14,20,34),   Surface=Color3.fromRGB(22,30,48),     SurfaceHover=Color3.fromRGB(34,45,70),    Stroke=Color3.fromRGB(73,93,132),   Accent=Color3.fromRGB(76,170,255), Text=Color3.fromRGB(244,248,255), Muted=Color3.fromRGB(173,189,219), WindowTransparency=0.26, PanelTransparency=0.30, SectionTransparency=0.36, ItemTransparency=0.42},
+        Light    = {Background=Color3.fromRGB(232,239,250),Surface=Color3.fromRGB(248,250,255),  SurfaceHover=Color3.fromRGB(225,234,247), Stroke=Color3.fromRGB(170,186,214), Accent=Color3.fromRGB(49,125,214), Text=Color3.fromRGB(27,36,52),    Muted=Color3.fromRGB(82,98,126),   WindowTransparency=0.12, PanelTransparency=0.16, SectionTransparency=0.22, ItemTransparency=0.28},
+        Midnight = {Background=Color3.fromRGB(9,12,22),    Surface=Color3.fromRGB(16,20,34),     SurfaceHover=Color3.fromRGB(27,34,56),    Stroke=Color3.fromRGB(74,86,122),   Accent=Color3.fromRGB(140,120,255),Text=Color3.fromRGB(239,242,255), Muted=Color3.fromRGB(161,170,201), WindowTransparency=0.30, PanelTransparency=0.34, SectionTransparency=0.40, ItemTransparency=0.46},
+        Crimson  = {Background=Color3.fromRGB(28,12,18),   Surface=Color3.fromRGB(42,18,28),     SurfaceHover=Color3.fromRGB(60,26,40),    Stroke=Color3.fromRGB(126,70,92),   Accent=Color3.fromRGB(255,102,138),Text=Color3.fromRGB(255,243,246), Muted=Color3.fromRGB(225,180,191), WindowTransparency=0.24, PanelTransparency=0.28, SectionTransparency=0.34, ItemTransparency=0.40},
+        Ocean    = {Background=Color3.fromRGB(7,22,39),    Surface=Color3.fromRGB(13,33,57),     SurfaceHover=Color3.fromRGB(19,48,78),    Stroke=Color3.fromRGB(67,116,172),  Accent=Color3.fromRGB(57,190,255), Text=Color3.fromRGB(235,247,255), Muted=Color3.fromRGB(163,204,233), WindowTransparency=0.28, PanelTransparency=0.32, SectionTransparency=0.38, ItemTransparency=0.44},
+        Forest   = {Background=Color3.fromRGB(14,28,24),   Surface=Color3.fromRGB(23,41,35),     SurfaceHover=Color3.fromRGB(35,58,48),    Stroke=Color3.fromRGB(88,124,103),  Accent=Color3.fromRGB(87,202,157), Text=Color3.fromRGB(241,250,244), Muted=Color3.fromRGB(177,204,187), WindowTransparency=0.25, PanelTransparency=0.29, SectionTransparency=0.35, ItemTransparency=0.41},
+        Sunset   = {Background=Color3.fromRGB(30,20,36),   Surface=Color3.fromRGB(45,29,54),     SurfaceHover=Color3.fromRGB(62,40,74),    Stroke=Color3.fromRGB(129,97,149),  Accent=Color3.fromRGB(255,160,98), Text=Color3.fromRGB(255,247,242), Muted=Color3.fromRGB(221,193,183), WindowTransparency=0.24, PanelTransparency=0.28, SectionTransparency=0.34, ItemTransparency=0.40},
     },
     ThemeObjects  = {Accent={}, Text={}, Muted={}, Surface={}, Background={}, Stroke={}, Success={}, Danger={}, WindowTransparency={}, PanelTransparency={}, SectionTransparency={}, ItemTransparency={}, ToggleBoxes={}},
     Notifications = {},
@@ -75,9 +83,52 @@ local function connect(signal, fn)
     return c
 end
 
+local trackTheme
+
+local function colorsMatch(a, b)
+    return typeof(a) == "Color3" and typeof(b) == "Color3" and a == b
+end
+
+local function numbersMatch(a, b)
+    return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.001
+end
+
+local function autoTrackTheme(obj, props)
+    if not trackTheme or not props or not NovaUI or not NovaUI.Theme then return end
+
+    local colorProps = {"BackgroundColor3", "TextColor3", "PlaceholderColor3", "ImageColor3", "ScrollBarImageColor3", "Color"}
+    local colorKeys = {"Background", "Surface", "SurfaceHover", "Stroke", "Accent", "Text", "Muted", "Success", "Danger"}
+    for _, prop in ipairs(colorProps) do
+        local value = props[prop]
+        if typeof(value) == "Color3" then
+            for _, key in ipairs(colorKeys) do
+                if colorsMatch(value, NovaUI.Theme[key]) then
+                    trackTheme(key, obj, prop)
+                    break
+                end
+            end
+        end
+    end
+
+    local transparencyProps = {"BackgroundTransparency"}
+    local transparencyKeys = {"WindowTransparency", "PanelTransparency", "SectionTransparency", "ItemTransparency"}
+    for _, prop in ipairs(transparencyProps) do
+        local value = props[prop]
+        if type(value) == "number" then
+            for _, key in ipairs(transparencyKeys) do
+                if numbersMatch(value, NovaUI.Theme[key]) then
+                    trackTheme(key, obj, prop)
+                    break
+                end
+            end
+        end
+    end
+end
+
 local function create(className, props)
     local obj = Instance.new(className)
     for k, v in pairs(props or {}) do obj[k] = v end
+    autoTrackTheme(obj, props)
     return obj
 end
 
@@ -103,6 +154,7 @@ local function makeDraggable(handle, target)
     connect(handle.InputBegan, function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true; startPos = input.Position; startFramePos = target.Position
+            if input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
             input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
@@ -119,16 +171,17 @@ local function makeDraggable(handle, target)
 end
 
 -- FIX: corrected resize direction (drag bottom-right corner outward = bigger)
-local function makeResizable(handle, target, minSize)
+local function makeResizable(handle, target, minSize, onResize)
     local resizing, dragInput, startPos, startSize = false, nil, nil, nil
     connect(handle.InputBegan, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             resizing = true; startPos = input.Position; startSize = target.Size
+            if input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
             input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then resizing = false end end)
         end
     end)
     connect(handle.InputChanged, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
     end)
     connect(UserInputService.InputChanged, function(input)
         if resizing and input == dragInput then
@@ -137,6 +190,7 @@ local function makeResizable(handle, target, minSize)
             local newW = math.clamp(startSize.X.Offset + delta.X, minSize.X, vp.X * 0.95)
             local newH = math.clamp(startSize.Y.Offset + delta.Y, minSize.Y, vp.Y * 0.95)
             target.Size = UDim2.new(0, newW, 0, newH)
+            if onResize then onResize(target.Size) end
         end
     end)
 end
@@ -145,7 +199,7 @@ local function animate(obj, info, props)
     local tw = TweenService:Create(obj, info, props); tw:Play(); return tw
 end
 
-local function trackTheme(key, obj, prop)
+trackTheme = function(key, obj, prop)
     if NovaUI.ThemeObjects[key] then
         table.insert(NovaUI.ThemeObjects[key], {obj, prop})
     end
@@ -166,6 +220,51 @@ local function makeRow(parent, h)
     trackTheme("ItemTransparency", r, "BackgroundTransparency")
     trackTheme("Stroke", stroke, "Color")
     return r
+end
+
+local function applyGlassOverlay(parent, radius, topTransparency, accentTransparency)
+    local zIndex = math.max((parent.ZIndex or 1) - 1, 0)
+    local shine = create("Frame", {
+        Parent = parent,
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = topTransparency or 0.965,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 1, 0, 1),
+        Size = UDim2.new(1, -2, 0.52, 0),
+        ZIndex = zIndex
+    })
+    applyCorner(shine, math.max(0, (radius or 8) - 1))
+    create("UIGradient", {
+        Parent = shine,
+        Rotation = 90,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.10),
+            NumberSequenceKeypoint.new(0.45, 0.72),
+            NumberSequenceKeypoint.new(1, 1.00)
+        })
+    })
+
+    local accentGlow = create("Frame", {
+        Parent = parent,
+        BackgroundColor3 = NovaUI.Theme.Accent,
+        BackgroundTransparency = accentTransparency or 0.988,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0.58, 0, 0.02, 0),
+        Size = UDim2.new(0.32, 0, 0.18, 0),
+        ZIndex = zIndex
+    })
+    applyCorner(accentGlow, radius or 8)
+    create("UIGradient", {
+        Parent = accentGlow,
+        Rotation = 15,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.02),
+            NumberSequenceKeypoint.new(1, 1.00)
+        })
+    })
+    trackTheme("Accent", accentGlow, "BackgroundColor3")
+
+    return {Shine = shine, Accent = accentGlow}
 end
 
 -- ─── Core Init ──────────────────────────────────────────────────────────────
@@ -259,7 +358,7 @@ function NovaUI:SetTheme(patch)
             if self.ThemeObjects[k] then
                 for _, entry in ipairs(self.ThemeObjects[k]) do
                     pcall(function()
-                        if entry[2] == "ScrollBarImageColor3" or entry[2] == "ImageColor3" then
+                        if entry[2] == "ScrollBarImageColor3" or entry[2] == "ImageColor3" or entry[2] == "PlaceholderColor3" then
                             entry[1][entry[2]] = v
                         else
                             animate(entry[1], TweenInfo.new(0.4), {[entry[2]] = v})
@@ -336,20 +435,76 @@ function NovaUI:CreateWindow(cfg)
     local gui = self:_ensureGui()
 
     local vp = workspace.CurrentCamera.ViewportSize
-    local defaultSizeX = math.min(cfg.Size and cfg.Size.X.Offset or 560, vp.X * 0.95 - 40)
-    local defaultSizeY = math.min(cfg.Size and cfg.Size.Y.Offset or 390, vp.Y * 0.95 - 40)
-    local defaultSize  = UDim2.new(0, defaultSizeX, 0, defaultSizeY)
-    local sidebarWidth = defaultSizeX < 450 and 120 or 165
-    local sidebarExpandedWidth = sidebarWidth + 12
-    local sidebarCollapsedWidth = 54
-    local panelInset = 8
-    local panelGap = 10
-    local topbarHeight = 58
-    local contentTop = topbarHeight + 8
-    local bottomInset = 8
+    local touchEnabled = UserInputService.TouchEnabled
+    local mobileMode = cfg.MobileLayout
+    if mobileMode == nil then
+        mobileMode = touchEnabled and vp.X <= 1200
+    end
+
+    local maxWidth = math.max(340, vp.X * 0.95 - 40)
+    local maxHeight = math.max(280, vp.Y * 0.95 - 40)
+    local minWidth = math.min(340, maxWidth)
+    local minHeight = math.min(280, maxHeight)
+    local chromePadding = UDim2.new(0, 40, 0, 40)
+
+    local function clampSize(width, height)
+        return UDim2.new(
+            0, math.floor(math.clamp(width, minWidth, maxWidth)),
+            0, math.floor(math.clamp(height, minHeight, maxHeight))
+        )
+    end
+
+    local requestedSize = cfg.Size and clampSize(cfg.Size.X.Offset, cfg.Size.Y.Offset) or nil
+    local compactSize = clampSize(vp.X * 0.52, vp.Y * 0.62)
+    local balancedSize = clampSize(vp.X * (mobileMode and 0.64 or 0.60), vp.Y * (mobileMode and 0.74 or 0.68))
+    local expandedSize = clampSize(vp.X * 0.84, vp.Y * 0.84)
+    local desktopDefault = requestedSize or clampSize(560, 390)
+
+    local sizeModes = mobileMode and {
+        {Name = "Compact",  Size = compactSize,  Glyph = "◱"},
+        {Name = "Balanced", Size = balancedSize, Glyph = "◫"},
+        {Name = "Expanded", Size = expandedSize, Glyph = "▣"},
+    } or {
+        {Name = "Default", Size = desktopDefault,              Glyph = "◫"},
+        {Name = "Large",   Size = clampSize(vp.X * 0.72, vp.Y * 0.76), Glyph = "▣"},
+        {Name = "Wide",    Size = expandedSize,                Glyph = "⬒"},
+    }
+
+    local sizeModeIndex = mobileMode and 2 or 1
+    local currentSize = requestedSize or sizeModes[sizeModeIndex].Size
+    local function getSidebarExpandedWidth()
+        local base = currentSize.X.Offset < (mobileMode and 430 or 450) and (mobileMode and 112 or 120) or (mobileMode and 132 or 165)
+        return base + 12
+    end
+    local sidebarCollapsedWidth = mobileMode and 56 or 60
+    local panelInset = mobileMode and 7 or 8
+    local panelGap = mobileMode and 8 or 10
+    local topbarHeight = mobileMode and 62 or 58
+    local contentTop = topbarHeight + panelInset + 4
+    local bottomInset = panelInset
+    local footerHeight = mobileMode and 60 or 68
+    local iconButtonSize = mobileMode and 38 or 36
+    local searchBoxHeight = mobileMode and 34 or 32
+    local controlGap = 8
+    local controlsWidth = iconButtonSize * 4 + controlGap * 3
     local thisWindowTabs = {}
 
-    local shadow = create("ImageLabel", {Parent = gui, BackgroundTransparency = 1, Image = "rbxassetid://6014261993", ImageColor3 = Color3.new(0,0,0), ImageTransparency = 1, ScaleType = Enum.ScaleType.Slice, SliceCenter = Rect.new(49,49,450,450), AnchorPoint = Vector2.new(0.5,0.5), Position = cfg.Position or UDim2.new(0.5,0,0.5,0), Size = defaultSize + UDim2.new(0,40,0,40)})
+    local function shadowSizeFromWindow(size)
+        return size + chromePadding
+    end
+
+    local shadow = create("ImageLabel", {
+        Parent = gui,
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://6014261993",
+        ImageColor3 = Color3.new(0,0,0),
+        ImageTransparency = 1,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(49,49,450,450),
+        AnchorPoint = Vector2.new(0.5,0.5),
+        Position = cfg.Position or (mobileMode and UDim2.new(0.5,0,0.54,0) or UDim2.new(0.5,0,0.5,0)),
+        Size = shadowSizeFromWindow(currentSize)
+    })
     local scaleObj = create("UIScale", {Parent = shadow, Scale = 0})
     local root = create("Frame", {Parent = shadow, AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.new(0.5,0,0.5,0), Size = UDim2.new(1,-40,1,-40), BackgroundColor3 = self.Theme.Background, BackgroundTransparency = self.Theme.WindowTransparency, ClipsDescendants = true})
     applyCorner(root, 14)
@@ -357,6 +512,7 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Background", root, "BackgroundColor3")
     trackTheme("WindowTransparency", root, "BackgroundTransparency")
     trackTheme("Stroke", rootStroke, "Color")
+    applyGlassOverlay(root, 14, 0.975, 0.992)
 
     local topbarShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset,0,panelInset), Size = UDim2.new(1,-panelInset*2,0,topbarHeight-10), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency})
     applyCorner(topbarShell, 12)
@@ -364,33 +520,34 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Surface", topbarShell, "BackgroundColor3")
     trackTheme("PanelTransparency", topbarShell, "BackgroundTransparency")
     trackTheme("Stroke", topbarStroke, "Color")
+    applyGlassOverlay(topbarShell, 12, 0.976, 0.993)
 
     -- Topbar
     local topbar = create("TextButton", {Parent = topbarShell, BackgroundTransparency = 1, Size = UDim2.new(1,0,1,0), Text = "", AutoButtonColor = false})
     makeDraggable(topbar, shadow)
 
-    local menuBtn = create("TextButton", {Parent = topbar, Position = UDim2.new(0,10,0.5,-18), Size = UDim2.new(0,36,0,36), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "≡", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Muted, TextSize = 18, AutoButtonColor = false})
+    local menuBtn = create("TextButton", {Parent = topbar, Position = UDim2.new(0,10,0.5,-iconButtonSize/2), Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "≡", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Muted, TextSize = mobileMode and 20 or 18, AutoButtonColor = false})
     applyCorner(menuBtn, 10)
     local menuStroke = applyStroke(menuBtn, self.Theme.Stroke, 1, 0.55)
     trackTheme("Surface", menuBtn, "BackgroundColor3")
     trackTheme("Muted", menuBtn, "TextColor3")
     trackTheme("Stroke", menuStroke, "Color")
 
-    local titleLbl = create("TextLabel", {Parent = topbar, BackgroundTransparency = 1, Position = UDim2.new(0,58,0,0), Size = UDim2.new(1,-234,1,0), Font = Enum.Font.GothamBlack, Text = cfg.Title or "NovaUI Premium", TextColor3 = self.Theme.Text, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left})
+    local titleLbl = create("TextLabel", {Parent = topbar, BackgroundTransparency = 1, Position = UDim2.new(0,60,0,0), Size = UDim2.new(1,-(controlsWidth + 96),1,0), Font = Enum.Font.GothamBlack, Text = cfg.Title or "NovaUI Premium", TextColor3 = self.Theme.Text, TextSize = mobileMode and 17 or 18, TextXAlignment = Enum.TextXAlignment.Left})
     trackTheme("Text", titleLbl, "TextColor3")
 
-    local controls = create("Frame", {Parent = topbar, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1,0.5), Position = UDim2.new(1,-10,0.5,0), Size = UDim2.new(0,120,0,36)})
+    local controls = create("Frame", {Parent = topbar, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1,0.5), Position = UDim2.new(1,-10,0.5,0), Size = UDim2.new(0,controlsWidth,0,iconButtonSize)})
     create("UIListLayout", {Parent = controls, FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0,8), HorizontalAlignment = Enum.HorizontalAlignment.Right})
 
     -- Search
-    local searchBtn = create("TextButton", {Parent = controls, Size = UDim2.new(0,36,0,36), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "🔍", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 12, AutoButtonColor = false})
+    local searchBtn = create("TextButton", {Parent = controls, Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "🔍", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 12, AutoButtonColor = false})
     applyCorner(searchBtn, 10)
     local searchStroke = applyStroke(searchBtn, self.Theme.Stroke, 1, 0.5)
     trackTheme("Surface", searchBtn, "BackgroundColor3")
     trackTheme("Text", searchBtn, "TextColor3")
     trackTheme("Stroke", searchStroke, "Color")
 
-    local searchOverlay = create("TextBox", {Parent = topbar, Position = UDim2.new(0,58,0.5,-15), Size = UDim2.new(1,-246,0,30), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextColor3 = self.Theme.Text, PlaceholderText = "Search features...", PlaceholderColor3 = self.Theme.Muted, TextSize = 13, Text = "", Visible = false})
+    local searchOverlay = create("TextBox", {Parent = topbar, Position = UDim2.new(0,60,0.5,-searchBoxHeight/2), Size = UDim2.new(1,-(controlsWidth + 92),0,searchBoxHeight), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextColor3 = self.Theme.Text, PlaceholderText = "Search features...", PlaceholderColor3 = self.Theme.Muted, TextSize = 13, Text = "", Visible = false})
     applyCorner(searchOverlay, 10)
     local srchStr = applyStroke(searchOverlay, self.Theme.Accent, 1, 1)
     trackTheme("Surface", searchOverlay, "BackgroundColor3")
@@ -398,7 +555,7 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Muted", searchOverlay, "PlaceholderColor3")
     trackTheme("Accent", srchStr, "Color")
 
-    local searchRevealTransparency = math.max(0, self.Theme.ItemTransparency - 0.12)
+    local searchRevealTransparency = math.max(0.04, self.Theme.ItemTransparency - 0.12)
 
     local searchActive = false
     connect(searchBtn.MouseButton1Click, function()
@@ -461,14 +618,21 @@ function NovaUI:CreateWindow(cfg)
     end)
 
     -- Window controls
-    local minBtn   = create("TextButton", {Parent = controls, Size = UDim2.new(0,36,0,36), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "−", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 14, AutoButtonColor = false})
+    local sizeBtn = create("TextButton", {Parent = controls, Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = sizeModes[sizeModeIndex].Glyph, Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 13, AutoButtonColor = false})
+    applyCorner(sizeBtn, 10)
+    local sizeStroke = applyStroke(sizeBtn, self.Theme.Stroke, 1, 0.5)
+    trackTheme("Surface", sizeBtn, "BackgroundColor3")
+    trackTheme("Text", sizeBtn, "TextColor3")
+    trackTheme("Stroke", sizeStroke, "Color")
+
+    local minBtn   = create("TextButton", {Parent = controls, Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "−", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Text, TextSize = 14, AutoButtonColor = false})
     applyCorner(minBtn, 10)
     local minStroke = applyStroke(minBtn, self.Theme.Stroke, 1, 0.5)
     trackTheme("Surface", minBtn, "BackgroundColor3")
     trackTheme("Text", minBtn, "TextColor3")
     trackTheme("Stroke", minStroke, "Color")
 
-    local closeBtn = create("TextButton", {Parent = controls, Size = UDim2.new(0,36,0,36), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "×", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Danger, TextSize = 14, AutoButtonColor = false})
+    local closeBtn = create("TextButton", {Parent = controls, Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "×", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Danger, TextSize = 14, AutoButtonColor = false})
     applyCorner(closeBtn, 10)
     local closeStroke = applyStroke(closeBtn, self.Theme.Stroke, 1, 0.5)
     trackTheme("Surface", closeBtn, "BackgroundColor3")
@@ -476,35 +640,148 @@ function NovaUI:CreateWindow(cfg)
     trackTheme("Stroke", closeStroke, "Color")
 
     -- Layout
-    local sidebarShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset,0,contentTop), Size = UDim2.new(0,sidebarExpandedWidth,1,-(contentTop + bottomInset)), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency})
+    local sidebarShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset,0,contentTop), Size = UDim2.new(0,getSidebarExpandedWidth(),1,-(contentTop + bottomInset)), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency})
     applyCorner(sidebarShell, 12)
     local sidebarStroke = applyStroke(sidebarShell, self.Theme.Stroke, 1, 0.55)
     trackTheme("Surface", sidebarShell, "BackgroundColor3")
     trackTheme("PanelTransparency", sidebarShell, "BackgroundTransparency")
     trackTheme("Stroke", sidebarStroke, "Color")
+    applyGlassOverlay(sidebarShell, 12, 0.978, 0.993)
 
-    local sidebar = create("ScrollingFrame", {Parent = sidebarShell, BackgroundTransparency = 1, Position = UDim2.new(0,6,0,6), Size = UDim2.new(1,-12,1,-12), ScrollBarThickness = 0, AutomaticCanvasSize = Enum.AutomaticSize.Y})
+    local sidebar = create("ScrollingFrame", {Parent = sidebarShell, BackgroundTransparency = 1, Position = UDim2.new(0,6,0,6), Size = UDim2.new(1,-12,1,-(footerHeight + 18)), ScrollBarThickness = 0, AutomaticCanvasSize = Enum.AutomaticSize.Y})
     create("UIListLayout", {Parent = sidebar, Padding = UDim.new(0,6), SortOrder = Enum.SortOrder.LayoutOrder})
 
-    local contentShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset + sidebarExpandedWidth + panelGap,0,contentTop), Size = UDim2.new(1,-(panelInset + sidebarExpandedWidth + panelGap + panelInset),1,-(contentTop + bottomInset)), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency, ClipsDescendants = true})
+    local sidebarFooter = create("TextButton", {Parent = sidebarShell, Position = UDim2.new(0,6,1,-(footerHeight + 6)), Size = UDim2.new(1,-12,0,footerHeight), BackgroundColor3 = self.Theme.Background, BackgroundTransparency = self.Theme.ItemTransparency, AutoButtonColor = false, Text = ""})
+    applyCorner(sidebarFooter, 12)
+    local sidebarFooterStroke = applyStroke(sidebarFooter, self.Theme.Stroke, 1, 0.45)
+    trackTheme("Background", sidebarFooter, "BackgroundColor3")
+    trackTheme("ItemTransparency", sidebarFooter, "BackgroundTransparency")
+    trackTheme("Stroke", sidebarFooterStroke, "Color")
+    applyGlassOverlay(sidebarFooter, 12, 0.982, 0.995)
+
+    local footerAvatarSize = mobileMode and 38 or 42
+    local footerAvatar = create("ImageLabel", {
+        Parent = sidebarFooter,
+        Size = UDim2.new(0, footerAvatarSize, 0, footerAvatarSize),
+        Position = UDim2.new(0, 8, 0.5, -footerAvatarSize / 2),
+        BackgroundColor3 = self.Theme.Surface,
+        BackgroundTransparency = math.max(0.1, self.Theme.ItemTransparency - 0.18),
+        Image = "rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=100&h=100"
+    })
+    applyCorner(footerAvatar, 12)
+    local footerAvatarStroke = applyStroke(footerAvatar, self.Theme.Accent, 1, 0.35)
+    trackTheme("Surface", footerAvatar, "BackgroundColor3")
+    trackTheme("Accent", footerAvatarStroke, "Color")
+
+    local footerName = create("TextLabel", {
+        Parent = sidebarFooter,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 56, 0, mobileMode and 10 or 12),
+        Size = UDim2.new(1, -116, 0, 18),
+        Font = Enum.Font.GothamBold,
+        Text = LocalPlayer.DisplayName,
+        TextColor3 = self.Theme.Text,
+        TextSize = mobileMode and 12 or 13,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+    local footerHandle = create("TextLabel", {
+        Parent = sidebarFooter,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 56, 0, mobileMode and 28 or 31),
+        Size = UDim2.new(1, -116, 0, 14),
+        Font = Enum.Font.Gotham,
+        Text = "@"..LocalPlayer.Name,
+        TextColor3 = self.Theme.Muted,
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+    local footerBadge = create("TextLabel", {
+        Parent = sidebarFooter,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -8, 0.5, 0),
+        Size = UDim2.new(0, mobileMode and 42 or 48, 0, 22),
+        BackgroundColor3 = self.Theme.Accent,
+        BackgroundTransparency = 0.75,
+        Font = Enum.Font.GothamBold,
+        Text = mobileMode and "YOU" or "LOCAL",
+        TextColor3 = self.Theme.Text,
+        TextSize = 10
+    })
+    applyCorner(footerBadge, 10)
+    trackTheme("Accent", footerBadge, "BackgroundColor3")
+
+    local contentShell = create("Frame", {Parent = root, Position = UDim2.new(0,panelInset + getSidebarExpandedWidth() + panelGap,0,contentTop), Size = UDim2.new(1,-(panelInset + getSidebarExpandedWidth() + panelGap + panelInset),1,-(contentTop + bottomInset)), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.PanelTransparency, ClipsDescendants = true})
     applyCorner(contentShell, 14)
     local contentStroke = applyStroke(contentShell, self.Theme.Stroke, 1, 0.55)
     trackTheme("Surface", contentShell, "BackgroundColor3")
     trackTheme("PanelTransparency", contentShell, "BackgroundTransparency")
     trackTheme("Stroke", contentStroke, "Color")
+    applyGlassOverlay(contentShell, 14, 0.978, 0.993)
 
-    local contentHolder = create("Frame", {Parent = contentShell, BackgroundTransparency = 1, Position = UDim2.new(0,14,0,14), Size = UDim2.new(1,-28,1,-28), ClipsDescendants = true})
+    local contentHolder = create("Frame", {Parent = contentShell, BackgroundTransparency = 1, Position = UDim2.new(0,mobileMode and 12 or 14,0,mobileMode and 12 or 14), Size = UDim2.new(1,-(mobileMode and 24 or 28),1,-(mobileMode and 24 or 28)), ClipsDescendants = true})
 
     -- Sidebar collapse
-    local sidebarOpen = true
-    local function refreshWindowLayout()
-        local activeSidebarWidth = sidebarOpen and sidebarExpandedWidth or sidebarCollapsedWidth
+    local sidebarOpen = not mobileMode
+    local minimized = false
+
+    local function applyWindowSize(newSize, instant)
+        currentSize = clampSize(newSize.X.Offset, newSize.Y.Offset)
+        if sizeBtn and sizeModes[sizeModeIndex] then
+            sizeBtn.Text = sizeModes[sizeModeIndex].Glyph
+        end
+        if minimized then
+            if instant then
+                shadow.Size = UDim2.new(0, currentSize.X.Offset, 0, topbarHeight) + chromePadding
+            else
+                animate(shadow, TweenInfo.new(0.32, Enum.EasingStyle.Quint), {Size = UDim2.new(0, currentSize.X.Offset, 0, topbarHeight) + chromePadding})
+            end
+        else
+            if instant then
+                shadow.Size = shadowSizeFromWindow(currentSize)
+            else
+                animate(shadow, TweenInfo.new(0.32, Enum.EasingStyle.Quint), {Size = shadowSizeFromWindow(currentSize)})
+            end
+        end
+        if self.CurrentWindow then
+            self.CurrentWindow.DefaultSize = currentSize
+        end
+    end
+
+    local function refreshWindowLayout(instant)
+        local expandedWidth = getSidebarExpandedWidth()
+        local activeSidebarWidth = sidebarOpen and expandedWidth or sidebarCollapsedWidth
         local contentX = panelInset + activeSidebarWidth + panelGap
-        animate(menuBtn, TweenInfo.new(0.3), {Rotation = sidebarOpen and 0 or 90})
-        animate(sidebarShell, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Size = UDim2.new(0, activeSidebarWidth, 1, -(contentTop + bottomInset))})
-        animate(contentShell, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Position = UDim2.new(0, contentX, 0, contentTop), Size = UDim2.new(1, -(contentX + panelInset), 1, -(contentTop + bottomInset))})
+        local transition = TweenInfo.new(0.4, Enum.EasingStyle.Quint)
+        if instant then
+            menuBtn.Rotation = sidebarOpen and 0 or 90
+            sidebarShell.Size = UDim2.new(0, activeSidebarWidth, 1, -(contentTop + bottomInset))
+            contentShell.Position = UDim2.new(0, contentX, 0, contentTop)
+            contentShell.Size = UDim2.new(1, -(contentX + panelInset), 1, -(contentTop + bottomInset))
+            footerAvatar.Position = sidebarOpen and UDim2.new(0, 8, 0.5, -footerAvatarSize / 2) or UDim2.new(0.5, -footerAvatarSize / 2, 0.5, -footerAvatarSize / 2)
+            footerName.TextTransparency = sidebarOpen and 0 or 1
+            footerHandle.TextTransparency = sidebarOpen and 0 or 1
+            footerBadge.BackgroundTransparency = sidebarOpen and 0.75 or 1
+            footerBadge.TextTransparency = sidebarOpen and 0 or 1
+        else
+            animate(menuBtn, TweenInfo.new(0.3), {Rotation = sidebarOpen and 0 or 90})
+            animate(sidebarShell, transition, {Size = UDim2.new(0, activeSidebarWidth, 1, -(contentTop + bottomInset))})
+            animate(contentShell, transition, {Position = UDim2.new(0, contentX, 0, contentTop), Size = UDim2.new(1, -(contentX + panelInset), 1, -(contentTop + bottomInset))})
+            animate(footerAvatar, TweenInfo.new(0.32, Enum.EasingStyle.Quint), {Position = sidebarOpen and UDim2.new(0, 8, 0.5, -footerAvatarSize / 2) or UDim2.new(0.5, -footerAvatarSize / 2, 0.5, -footerAvatarSize / 2)})
+            animate(footerName, TweenInfo.new(0.28), {TextTransparency = sidebarOpen and 0 or 1})
+            animate(footerHandle, TweenInfo.new(0.28), {TextTransparency = sidebarOpen and 0 or 1})
+            animate(footerBadge, TweenInfo.new(0.28), {BackgroundTransparency = sidebarOpen and 0.75 or 1, TextTransparency = sidebarOpen and 0 or 1})
+        end
         for _, tab in ipairs(thisWindowTabs) do
-            if tab.LabelText then animate(tab.LabelText, TweenInfo.new(0.3), {TextTransparency = sidebarOpen and 0 or 1}) end
+            if tab.LabelText then
+                if instant then
+                    tab.LabelText.TextTransparency = sidebarOpen and 0 or 1
+                else
+                    animate(tab.LabelText, TweenInfo.new(0.3), {TextTransparency = sidebarOpen and 0 or 1})
+                end
+            end
+        end
+        if self.CurrentWindow then
+            self.CurrentWindow.SidebarOpen = sidebarOpen
         end
     end
 
@@ -513,27 +790,63 @@ function NovaUI:CreateWindow(cfg)
         refreshWindowLayout()
     end)
 
+    connect(sidebarFooter.MouseButton1Click, function()
+        if not sidebarOpen then
+            sidebarOpen = true
+            refreshWindowLayout()
+        else
+            NovaUI:Notify({
+                Title = "Signed In",
+                Content = string.format("%s (@%s)", LocalPlayer.DisplayName, LocalPlayer.Name),
+                Duration = 2
+            })
+        end
+    end)
+
+    local function cycleSizeMode()
+        sizeModeIndex = sizeModeIndex % #sizeModes + 1
+        applyWindowSize(sizeModes[sizeModeIndex].Size)
+        refreshWindowLayout()
+    end
+    connect(sizeBtn.MouseButton1Click, cycleSizeMode)
+
     -- Minimize
-    local minimized = false
     connect(minBtn.MouseButton1Click, function()
         minimized = not minimized
-        animate(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Size = minimized and UDim2.new(0, defaultSizeX, 0, topbarHeight) + UDim2.new(0,40,0,40) or defaultSize + UDim2.new(0,40,0,40)})
+        animate(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Size = minimized and UDim2.new(0, currentSize.X.Offset, 0, topbarHeight) + chromePadding or shadowSizeFromWindow(currentSize)})
         contentShell.Visible = not minimized; sidebarShell.Visible = not minimized
     end)
 
     connect(closeBtn.MouseButton1Click, function() NovaUI:Toggle(false) end)
 
     -- FIX: resize handle at bottom-right corner, corrected delta math
-    if not UserInputService.TouchEnabled then
-        local resizeHandle = create("TextButton", {
-            Parent = root, AnchorPoint = Vector2.new(1,1), Position = UDim2.new(1,0,1,0),
-            Size = UDim2.new(0,20,0,20), BackgroundTransparency = 1,
-            Text = "◢", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Muted, TextSize = 12, ZIndex = 5
-        })
-        makeResizable(resizeHandle, shadow, Vector2.new(480, 340))
-        connect(resizeHandle.MouseEnter, function() animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Accent}) end)
-        connect(resizeHandle.MouseLeave, function() animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Muted}) end)
+    local resizeHandle = create("TextButton", {
+        Parent = root,
+        AnchorPoint = Vector2.new(1,1),
+        Position = UDim2.new(1, mobileMode and -8 or 0, 1, mobileMode and -8 or 0),
+        Size = UDim2.new(0, mobileMode and 30 or 20, 0, mobileMode and 30 or 20),
+        BackgroundColor3 = self.Theme.Surface,
+        BackgroundTransparency = mobileMode and self.Theme.ItemTransparency or 1,
+        Text = mobileMode and "⤡" or "◢",
+        Font = Enum.Font.GothamBold,
+        TextColor3 = self.Theme.Muted,
+        TextSize = mobileMode and 15 or 12,
+        ZIndex = 5,
+        AutoButtonColor = false
+    })
+    if mobileMode then
+        applyCorner(resizeHandle, 10)
+        applyStroke(resizeHandle, self.Theme.Stroke, 1, 0.45)
     end
+    makeResizable(resizeHandle, shadow, mobileMode and Vector2.new(360, 300) or Vector2.new(420, 320), function(newShadowSize)
+        currentSize = UDim2.new(0, math.max(minWidth, newShadowSize.X.Offset - 40), 0, math.max(minHeight, newShadowSize.Y.Offset - 40))
+        if self.CurrentWindow then
+            self.CurrentWindow.DefaultSize = currentSize
+        end
+        refreshWindowLayout(true)
+    end)
+    connect(resizeHandle.MouseEnter, function() animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Accent}) end)
+    connect(resizeHandle.MouseLeave, function() animate(resizeHandle, TweenInfo.new(0.2), {TextColor3 = self.Theme.Muted}) end)
 
     -- Toggle button
     if cfg.UseToggleButton ~= false then
@@ -553,37 +866,59 @@ function NovaUI:CreateWindow(cfg)
         self.ToggleButton = btn
     end
 
+    applyWindowSize(currentSize, true)
+    refreshWindowLayout(true)
+
     self.MainFrame = shadow; self.MainScale = scaleObj
-    self.CurrentWindow = {Root = root, Sidebar = sidebar, Content = contentHolder, Shadow = shadow, DefaultSize = defaultSize, Tabs = thisWindowTabs, SelectedTab = nil, TitleLabel = titleLbl, ConfigName = cfg.ConfigName or "default"}
+    self.CurrentWindow = {
+        Root = root,
+        Sidebar = sidebar,
+        Content = contentHolder,
+        Shadow = shadow,
+        DefaultSize = currentSize,
+        Tabs = thisWindowTabs,
+        SelectedTab = nil,
+        TitleLabel = titleLbl,
+        ConfigName = cfg.ConfigName or "default",
+        SidebarOpen = sidebarOpen,
+        MobileMode = mobileMode,
+        ApplyWindowSize = applyWindowSize,
+        CycleWindowSize = cycleSizeMode,
+        SizeModes = sizeModes
+    }
     setmetatable(self.CurrentWindow, {__index = WindowMethods})
     return self.CurrentWindow
 end
 
 function WindowMethods:SetTitle(text) if self.TitleLabel then self.TitleLabel.Text = text or "" end end
+function WindowMethods:SetSize(size) if self.ApplyWindowSize then self.ApplyWindowSize(size) end end
+function WindowMethods:CycleSize() if self.CycleWindowSize then self.CycleWindowSize() end end
 
 -- ─── Tab ─────────────────────────────────────────────────────────────────────
 
 function WindowMethods:CreateTab(cfg)
     cfg = cfg or {}
-    local tabBtn = create("TextButton", {Parent = self.Sidebar, Size = UDim2.new(1,0,0,40), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = 1, Text = "", AutoButtonColor = false})
+    local mobileMode = self.MobileMode == true
+    local tabHeight = mobileMode and 44 or 40
+    local tabBtn = create("TextButton", {Parent = self.Sidebar, Size = UDim2.new(1,0,0,tabHeight), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = 1, Text = "", AutoButtonColor = false})
     applyCorner(tabBtn, 10)
     local tabStroke = applyStroke(tabBtn, NovaUI.Theme.Stroke, 1, 1)
     trackTheme("Surface", tabBtn, "BackgroundColor3")
     trackTheme("Stroke", tabStroke, "Color")
 
-    local icn = create("TextLabel", {Parent = tabBtn, Position = UDim2.new(0,10,0,0), Size = UDim2.new(0,20,1,0), BackgroundTransparency = 1, Text = cfg.Icon or "", Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 14})
-    local lbl = create("TextLabel", {Parent = tabBtn, Position = UDim2.new(0,36,0,0), Size = UDim2.new(1,-36,1,0), BackgroundTransparency = 1, Text = cfg.Name or "Tab", Font = Enum.Font.GothamSemibold, TextColor3 = NovaUI.Theme.Muted, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
-    local indicator = create("Frame", {Parent = tabBtn, Position = UDim2.new(0,0,0.5,-10), Size = UDim2.new(0,3,0,0), BackgroundColor3 = NovaUI.Theme.Accent, BorderSizePixel = 0}); applyCorner(indicator, 2); trackTheme("Accent", indicator, "BackgroundColor3")
+    local icn = create("TextLabel", {Parent = tabBtn, Position = UDim2.new(0,mobileMode and 11 or 10,0,0), Size = UDim2.new(0,20,1,0), BackgroundTransparency = 1, Text = cfg.Icon or "", Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = mobileMode and 15 or 14})
+    local lbl = create("TextLabel", {Parent = tabBtn, Position = UDim2.new(0,36,0,0), Size = UDim2.new(1,-36,1,0), BackgroundTransparency = 1, Text = cfg.Name or "Tab", Font = Enum.Font.GothamSemibold, TextColor3 = NovaUI.Theme.Muted, TextSize = mobileMode and 14 or 13, TextXAlignment = Enum.TextXAlignment.Left, TextTransparency = self.SidebarOpen == false and 1 or 0})
+    local indicator = create("Frame", {Parent = tabBtn, Position = UDim2.new(0,0,0.5,-(mobileMode and 12 or 10)), Size = UDim2.new(0,3,0,0), BackgroundColor3 = NovaUI.Theme.Accent, BorderSizePixel = 0}); applyCorner(indicator, 2); trackTheme("Accent", indicator, "BackgroundColor3")
 
     local page = create("ScrollingFrame", {Parent = self.Content, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false, Position = UDim2.new(0.05,0,0,0), ScrollBarThickness = 2, ScrollBarImageColor3 = NovaUI.Theme.Accent, AutomaticCanvasSize = Enum.AutomaticSize.Y})
     create("UIListLayout", {Parent = page, Padding = UDim.new(0,12), SortOrder = Enum.SortOrder.LayoutOrder}); trackTheme("Accent", page, "ScrollBarImageColor3")
-    create("UIPadding", {Parent = page, PaddingTop = UDim.new(0,6), PaddingBottom = UDim.new(0,12), PaddingRight = UDim.new(0,6), PaddingLeft = UDim.new(0,2)})
+    create("UIPadding", {Parent = page, PaddingTop = UDim.new(0,mobileMode and 4 or 6), PaddingBottom = UDim.new(0,12), PaddingRight = UDim.new(0,6), PaddingLeft = UDim.new(0,2)})
 
-    local pageTitle = create("TextLabel", {Parent = page, LayoutOrder = -100, Size = UDim2.new(1,-6,0,28), BackgroundTransparency = 1, Text = cfg.Title or cfg.Name or "Tab", Font = Enum.Font.GothamBlack, TextColor3 = NovaUI.Theme.Text, TextSize = 24, TextXAlignment = Enum.TextXAlignment.Left})
+    local pageTitle = create("TextLabel", {Parent = page, LayoutOrder = -100, Size = UDim2.new(1,-6,0,mobileMode and 24 or 28), BackgroundTransparency = 1, Text = cfg.Title or cfg.Name or "Tab", Font = Enum.Font.GothamBlack, TextColor3 = NovaUI.Theme.Text, TextSize = mobileMode and 21 or 24, TextXAlignment = Enum.TextXAlignment.Left})
     trackTheme("Text", pageTitle, "TextColor3")
 
     if cfg.Description then
-        local pageDescription = create("TextLabel", {Parent = page, LayoutOrder = -99, Size = UDim2.new(1,-6,0,18), BackgroundTransparency = 1, Text = cfg.Description, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left})
+        local pageDescription = create("TextLabel", {Parent = page, LayoutOrder = -99, Size = UDim2.new(1,-6,0,18), BackgroundTransparency = 1, Text = cfg.Description, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = mobileMode and 11 or 12, TextXAlignment = Enum.TextXAlignment.Left})
         trackTheme("Muted", pageDescription, "TextColor3")
     end
 
@@ -605,7 +940,7 @@ function WindowMethods:CreateTab(cfg)
         animate(tabBtn, TweenInfo.new(0.25), {BackgroundTransparency = NovaUI.Theme.ItemTransparency})
         animate(lbl, TweenInfo.new(0.25), {TextColor3 = NovaUI.Theme.Text})
         animate(icn, TweenInfo.new(0.25), {TextColor3 = NovaUI.Theme.Text})
-        animate(indicator, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0,3,0,24)})
+        animate(indicator, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0,3,0,mobileMode and 26 or 24)})
     end
     tab.Select = selectTab
     connect(tabBtn.MouseButton1Click, selectTab)
@@ -657,6 +992,7 @@ function TabMethods:CreateSection(cfg)
     trackTheme("Surface", section, "BackgroundColor3")
     trackTheme("SectionTransparency", section, "BackgroundTransparency")
     trackTheme("Stroke", sectionStroke, "Color")
+    applyGlassOverlay(section, 12, 0.982, 0.995)
 
     local header = create("TextButton", {Parent = section, Size = UDim2.new(1,0,0,40), BackgroundTransparency = 1, Text = "", AutoButtonColor = false})
     local headerTitle = create("TextLabel", {Parent = header, Position = UDim2.new(0,14,0,0), Size = UDim2.new(1,-42,1,0), BackgroundTransparency = 1, Text = cfg.Name or "Section", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left})
@@ -738,7 +1074,8 @@ end
 -- FIX: Slider - click value label to type exact number
 function SectionMethods:AddSlider(cfg)
     local min, max, inc = cfg.Min or 0, cfg.Max or 100, cfg.Increment or 1
-    local row = makeRow(self.Holder, 54)
+    local touchMode = UserInputService.TouchEnabled
+    local row = makeRow(self.Holder, touchMode and 64 or 54)
     applyTooltip(row, cfg.Tooltip)
     local decimals = 0
     if inc < 1 then
@@ -753,15 +1090,20 @@ function SectionMethods:AddSlider(cfg)
         return tostring(math.floor(v + 0.5))
     end
 
-    create("TextLabel", {Parent = row, Position = UDim2.new(0,12,0,8), Size = UDim2.new(1,-80,0,16), BackgroundTransparency = 1, Text = cfg.Name or "Slider", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+    local knobSize = touchMode and 18 or 14
+    local knobExpandedSize = touchMode and 22 or 18
+    local barHeight = touchMode and 8 or 6
+    local barY = touchMode and 42 or 36
+    local valueBoxHeight = touchMode and 24 or 22
+    create("TextLabel", {Parent = row, Position = UDim2.new(0,12,0,8), Size = UDim2.new(1,-80,0,16), BackgroundTransparency = 1, Text = cfg.Name or "Slider", Font = Enum.Font.GothamBold, TextColor3 = NovaUI.Theme.Text, TextSize = touchMode and 14 or 13, TextXAlignment = Enum.TextXAlignment.Left})
     
     -- Clickable value label that becomes a textbox
-    local valBox = create("TextBox", {Parent = row, Position = UDim2.new(1,-68,0,5), Size = UDim2.new(0,56,0,22), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = 0.6, Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 12, Text = formatValue(cfg.Default or min), TextXAlignment = Enum.TextXAlignment.Center, ClearTextOnFocus = true})
+    local valBox = create("TextBox", {Parent = row, Position = UDim2.new(1,-68,0,5), Size = UDim2.new(0,56,0,valueBoxHeight), BackgroundColor3 = NovaUI.Theme.Surface, BackgroundTransparency = math.max(0.08, NovaUI.Theme.ItemTransparency - 0.1), Font = Enum.Font.Gotham, TextColor3 = NovaUI.Theme.Muted, TextSize = 12, Text = formatValue(cfg.Default or min), TextXAlignment = Enum.TextXAlignment.Center, ClearTextOnFocus = true})
     applyCorner(valBox, 4); applyStroke(valBox, NovaUI.Theme.Stroke, 1, 0.7)
 
-    local bar  = create("Frame", {Parent = row, Position = UDim2.new(0,12,0,36), Size = UDim2.new(1,-24,0,6), BackgroundColor3 = NovaUI.Theme.Surface}); applyCorner(bar, 3)
+    local bar  = create("Frame", {Parent = row, Position = UDim2.new(0,12,0,barY), Size = UDim2.new(1,-24,0,barHeight), BackgroundColor3 = NovaUI.Theme.Background, BackgroundTransparency = math.max(0.12, NovaUI.Theme.ItemTransparency - 0.05)}); applyCorner(bar, 4)
     local fill = create("Frame", {Parent = bar, Size = UDim2.new(0,0,1,0), BackgroundColor3 = NovaUI.Theme.Accent}); applyCorner(fill, 3); trackTheme("Accent", fill, "BackgroundColor3")
-    local knob = create("Frame", {Parent = fill, AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.new(1,0,0.5,0), Size = UDim2.new(0,14,0,14), BackgroundColor3 = NovaUI.Theme.Text}); applyCorner(knob, 7)
+    local knob = create("Frame", {Parent = fill, AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.new(1,0,0.5,0), Size = UDim2.new(0,knobSize,0,knobSize), BackgroundColor3 = NovaUI.Theme.Text}); applyCorner(knob, math.floor(knobSize / 2))
 
     local currentVal = cfg.Default or min
     local function setVal(v, skip)
@@ -785,25 +1127,40 @@ function SectionMethods:AddSlider(cfg)
     end)
 
     local dragging = false
+    local activeInput
     local hitBox = create("TextButton", {Parent = row, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = ""})
-    -- Don't capture the valBox area
+    local function updateFromPosition(positionX)
+        setVal(min + math.clamp((positionX - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1) * (max - min))
+    end
+
     connect(hitBox.InputBegan, function(inp)
-        if inp.UserInputType.Name:find("MouseButton1") then
-            -- ignore if over valBox
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
             local mp = UserInputService:GetMouseLocation()
             local abs = valBox.AbsolutePosition; local sz = valBox.AbsoluteSize
             if mp.X >= abs.X and mp.X <= abs.X + sz.X and mp.Y >= abs.Y and mp.Y <= abs.Y + sz.Y then return end
             dragging = true
-            animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,18,0,18)})
-            setVal(min + math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1) * (max - min))
+            activeInput = inp
+            animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobExpandedSize,0,knobExpandedSize)})
+            updateFromPosition(inp.Position.X)
+            inp.Changed:Connect(function()
+                if inp.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    activeInput = nil
+                    animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobSize,0,knobSize)})
+                end
+            end)
         end
     end)
     connect(hitBox.InputEnded, function(inp)
-        if inp.UserInputType.Name:find("MouseButton1") then dragging = false; animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,14,0,14)}) end
+        if inp == activeInput then
+            dragging = false
+            activeInput = nil
+            animate(knob, TweenInfo.new(0.2), {Size = UDim2.new(0,knobSize,0,knobSize)})
+        end
     end)
     connect(UserInputService.InputChanged, function(inp)
-        if dragging and inp.UserInputType.Name:find("MouseMovement") then
-            setVal(min + math.clamp((inp.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1) * (max - min))
+        if dragging and inp == activeInput then
+            updateFromPosition(inp.Position.X)
         end
     end)
 
@@ -865,6 +1222,7 @@ end
 
 function SectionMethods:AddDropdown(cfg)
     cfg = cfg or {}
+    local touchMode = UserInputService.TouchEnabled
 
     local Dropdown = {
         Value = cfg.Default or "",
@@ -878,7 +1236,11 @@ function SectionMethods:AddDropdown(cfg)
     local multi = cfg.Multi or false
     local searchable = cfg.Searchable or false
     local selected = cfg.Default or (multi and {} or "")
-    local maxVisible = 5
+    local maxVisible = touchMode and 4 or 5
+    local headerHeight = touchMode and 44 or 38
+    local optionHeight = touchMode and 34 or 28
+    local searchHeight = touchMode and 30 or 24
+    local searchAreaHeight = searchable and (searchHeight + 12) or 0
 
     if multi then
         if type(selected) ~= "table" then
@@ -890,19 +1252,19 @@ function SectionMethods:AddDropdown(cfg)
         end
     end
 
-    local row = makeRow(self.Holder, 38)
+    local row = makeRow(self.Holder, headerHeight)
     row.ClipsDescendants = true
     applyTooltip(row, cfg.Tooltip)
 
     create("TextLabel", {
         Parent = row,
         Position = UDim2.new(0, 12, 0, 0),
-        Size = UDim2.new(0.5, 0, 0, 38),
+        Size = UDim2.new(0.5, 0, 0, headerHeight),
         BackgroundTransparency = 1,
         Text = cfg.Name or "Dropdown",
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Text,
-        TextSize = 13,
+        TextSize = touchMode and 14 or 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
 
@@ -923,12 +1285,12 @@ function SectionMethods:AddDropdown(cfg)
     local selectedLbl = create("TextLabel", {
         Parent = row,
         Position = UDim2.new(0.5, 0, 0, 0),
-        Size = UDim2.new(0.5, -30, 0, 38),
+        Size = UDim2.new(0.5, -30, 0, headerHeight),
         BackgroundTransparency = 1,
         Text = getValText(),
         Font = Enum.Font.Gotham,
         TextColor3 = NovaUI.Theme.Accent,
-        TextSize = 12,
+        TextSize = touchMode and 13 or 12,
         TextXAlignment = Enum.TextXAlignment.Right,
         TextTruncate = Enum.TextTruncate.AtEnd
     })
@@ -937,24 +1299,24 @@ function SectionMethods:AddDropdown(cfg)
     local arrow = create("TextLabel", {
         Parent = row,
         Position = UDim2.new(1, -26, 0, 0),
-        Size = UDim2.new(0, 26, 0, 38),
+        Size = UDim2.new(0, 26, 0, headerHeight),
         BackgroundTransparency = 1,
         Text = "⌄",
         Font = Enum.Font.GothamBold,
         TextColor3 = NovaUI.Theme.Muted,
-        TextSize = 14
+        TextSize = touchMode and 15 or 14
     })
 
     local topHitbox = create("TextButton", {
         Parent = row,
-        Size = UDim2.new(1, 0, 0, 38),
+        Size = UDim2.new(1, 0, 0, headerHeight),
         BackgroundTransparency = 1,
         Text = ""
     })
 
     local divider = create("Frame", {
         Parent = row,
-        Position = UDim2.new(0, 0, 0, 37),
+        Position = UDim2.new(0, 0, 0, headerHeight - 1),
         Size = UDim2.new(1, 0, 0, 1),
         BackgroundColor3 = NovaUI.Theme.Stroke,
         BackgroundTransparency = 0.5,
@@ -964,24 +1326,28 @@ function SectionMethods:AddDropdown(cfg)
 
     local dropdownContainer = create("ScrollingFrame", {
         Parent = row,
-        Position = UDim2.new(0, 0, 0, 38),
+        Position = UDim2.new(0, 0, 0, headerHeight),
         Size = UDim2.new(1, 0, 0, 0),
-        BackgroundTransparency = 1,
+        BackgroundColor3 = NovaUI.Theme.Background,
+        BackgroundTransparency = NovaUI.Theme.SectionTransparency,
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
         ScrollBarImageColor3 = NovaUI.Theme.Accent,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ClipsDescendants = true
     })
+    applyCorner(dropdownContainer, 8)
+    applyStroke(dropdownContainer, NovaUI.Theme.Stroke, 1, 0.55)
     trackTheme("Accent", dropdownContainer, "ScrollBarImageColor3")
 
     local searchBox
     if searchable then
         searchBox = create("TextBox", {
             Parent = dropdownContainer,
-            Size = UDim2.new(1, -8, 0, 24),
-            Position = UDim2.new(0, 4, 0, 4),
+            Size = UDim2.new(1, -12, 0, searchHeight),
+            Position = UDim2.new(0, 6, 0, 6),
             BackgroundColor3 = NovaUI.Theme.Surface,
+            BackgroundTransparency = math.max(0.08, NovaUI.Theme.ItemTransparency - 0.08),
             Text = "",
             PlaceholderText = "Search...",
             PlaceholderColor3 = NovaUI.Theme.Muted,
@@ -996,6 +1362,7 @@ function SectionMethods:AddDropdown(cfg)
 
     local listHolder = create("Frame", {
         Parent = dropdownContainer,
+        Position = UDim2.new(0, 0, 0, searchAreaHeight),
         Size = UDim2.new(1, 0, 0, 0),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y
@@ -1009,9 +1376,7 @@ function SectionMethods:AddDropdown(cfg)
 
     local function updateCanvas()
         local contentHeight = listLayout.AbsoluteContentSize.Y
-        if searchable and searchBox then
-            contentHeight += 28
-        end
+        contentHeight += searchAreaHeight
         dropdownContainer.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
     end
 
@@ -1032,12 +1397,12 @@ function SectionMethods:AddDropdown(cfg)
         arrow.Text = state and "⌃" or "⌄"
         divider.Visible = state
 
-        local rowsHeight = math.min(getVisibleButtonCount(), maxVisible) * 30
-        local extra = searchable and 28 or 0
+        local rowsHeight = math.min(getVisibleButtonCount(), maxVisible) * optionHeight
+        local extra = searchAreaHeight
         local targetHeight = state and (rowsHeight + extra) or 0
 
         animate(row, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, 0, 0, 38 + targetHeight)
+            Size = UDim2.new(1, 0, 0, headerHeight + targetHeight)
         })
         animate(dropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Size = UDim2.new(1, 0, 0, targetHeight)
@@ -1058,8 +1423,8 @@ function SectionMethods:AddDropdown(cfg)
                 isSelected = (selected == value)
             end
 
-            button.BackgroundTransparency = isSelected and 0 or 1
-            title.TextTransparency = isSelected and 0 or 0.35
+            button.BackgroundTransparency = isSelected and math.max(0.06, NovaUI.Theme.ItemTransparency - 0.18) or 0.82
+            title.TextTransparency = isSelected and 0 or 0.12
             title.TextColor3 = isSelected and NovaUI.Theme.Accent or NovaUI.Theme.Text
         end
     end
@@ -1067,9 +1432,9 @@ function SectionMethods:AddDropdown(cfg)
     local function addOptionButton(option)
         local btn = create("TextButton", {
             Parent = listHolder,
-            Size = UDim2.new(1, 0, 0, 28),
-            BackgroundColor3 = NovaUI.Theme.Background,
-            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, optionHeight),
+            BackgroundColor3 = NovaUI.Theme.Surface,
+            BackgroundTransparency = 0.82,
             BorderSizePixel = 0,
             Text = ""
         })
@@ -1084,8 +1449,8 @@ function SectionMethods:AddDropdown(cfg)
             Text = tostring(option),
             Font = Enum.Font.Gotham,
             TextColor3 = NovaUI.Theme.Text,
-            TextTransparency = 0.35,
-            TextSize = 12,
+            TextTransparency = 0.12,
+            TextSize = touchMode and 13 or 12,
             TextXAlignment = Enum.TextXAlignment.Left
         })
 
@@ -1150,9 +1515,9 @@ function SectionMethods:AddDropdown(cfg)
         updateCanvas()
 
         if Dropdown.Toggled then
-            local rowsHeight = math.min(visible, maxVisible) * 30
-            local extra = searchable and 28 or 0
-            row.Size = UDim2.new(1, 0, 0, 38 + rowsHeight + extra)
+            local rowsHeight = math.min(visible, maxVisible) * optionHeight
+            local extra = searchAreaHeight
+            row.Size = UDim2.new(1, 0, 0, headerHeight + rowsHeight + extra)
             dropdownContainer.Size = UDim2.new(1, 0, 0, rowsHeight + extra)
         end
     end
@@ -1731,13 +2096,14 @@ end
 
 -- NEW: Built-in settings tab
 function WindowMethods:CreateSettingsTab()
-    local tab = self:CreateTab({Name = "Settings", Icon = "⚙️"})
+    local tab = self:CreateTab({Name = "Settings", Icon = "⚙️", Description = "Theme, transparency, and shell controls."})
 
     -- Theme section
     local themeSection = tab:CreateSection({Name = "Theme"})
 
     local presetNames = {}
     for k in pairs(NovaUI.Presets) do table.insert(presetNames, k) end
+    table.sort(presetNames)
 
     themeSection:AddDropdown({
         Name = "Preset",
@@ -1782,6 +2148,12 @@ function WindowMethods:CreateSettingsTab()
         Default = NovaUI.Theme.ItemTransparency,
         Callback = function(v) NovaUI:SetTheme({ItemTransparency = v}) end
     })
+    themeSection:AddButton({
+        Name = "Cycle Window Size",
+        Callback = function()
+            self:CycleSize()
+        end
+    })
 
     -- Config section
     if NovaUI.SaveConfig then
@@ -1816,6 +2188,7 @@ function WindowMethods:CreateSettingsTab()
     -- Info section
     local infoSection = tab:CreateSection({Name = "About"})
     infoSection:AddParagraph({Title = "NovaUI Premium", Content = "Version "..NovaUI.Version.."\nA feature-rich, themeable UI library for Roblox.\nBuilt with ❤️ using pure Lua."})
+    infoSection:AddParagraph({Title = "Tips", Content = "Use the top-bar size button to cycle between compact and expanded layouts. On touch devices you can also drag the bottom-right handle to resize the window."})
 
     return tab
 end
