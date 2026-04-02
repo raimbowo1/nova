@@ -1,4 +1,7 @@
--- NovaUI Premium v2.5.6 (Theme Preserve Update)
+-- NovaUI Premium v2.5.7 (Notification Safe Layout)
+-- Changes from v2.5.7:
+--   [FIX] Notifications now avoid the bottom-right resize grip by switching to a safer stack lane when needed
+--   [IMPROVE] Notification tray width now adapts better to tighter mobile screens
 -- Changes from v2.5.6:
 --   [FIX] Preset/theme switching now preserves the user's current transparency settings
 --   [IMPROVE] Explicit transparency patches still apply normally without being blocked by preset logic
@@ -67,7 +70,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local NovaUI = {
-    Version = "2.5.6",
+    Version = "2.5.7",
     Connections = {},
     Flags = {},
     Elements = {},
@@ -178,7 +181,7 @@ local function safeParentGui()
     return (ok and res) or LocalPlayer:FindFirstChild("PlayerGui") or CoreGui
 end
 
-local function makeDraggable(handle, target)
+local function makeDraggable(handle, target, onDrag)
     local dragging, dragInput, startPos, startFramePos = false, nil, nil, nil
     connect(handle.InputBegan, function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -195,6 +198,7 @@ local function makeDraggable(handle, target)
             target.Position = UDim2.new(
                 startFramePos.X.Scale, startFramePos.X.Offset + (input.Position.X - startPos.X),
                 startFramePos.Y.Scale, startFramePos.Y.Offset + (input.Position.Y - startPos.Y))
+            if onDrag then onDrag(target.Position) end
         end
     end)
 end
@@ -353,6 +357,91 @@ end
 
 -- ─── Element Registry ────────────────────────────────────────────────────────
 
+function NovaUI:_getNotificationLayout()
+    local camera = workspace.CurrentCamera
+    local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)
+    local mobileMode = UserInputService.TouchEnabled
+    local outerMargin = mobileMode and 12 or 20
+    local width = math.floor(math.clamp(mobileMode and (vp.X - outerMargin * 2) or (vp.X * 0.24), mobileMode and 220 or 240, 320))
+    local height = math.max(120, vp.Y - outerMargin * 2)
+    local bottomLaneHeight = mobileMode and 220 or 200
+    local stackFromTop = false
+
+    local window = self.CurrentWindow
+    local shadow = window and window.Shadow
+    if not self.Hidden and window and not window.Minimized and shadow and shadow.Parent and shadow.Visible then
+        local shadowPos = shadow.AbsolutePosition
+        local shadowSize = shadow.AbsoluteSize
+        local shadowRight = shadowPos.X + shadowSize.X
+        local shadowBottom = shadowPos.Y + shadowSize.Y
+        local laneLeft = vp.X - outerMargin - width
+        local laneTop = vp.Y - bottomLaneHeight
+        local overlapsRightLane = shadowRight > laneLeft and shadowPos.X < vp.X - outerMargin
+        local overlapsBottomLane = shadowBottom > laneTop
+        stackFromTop = overlapsRightLane and overlapsBottomLane
+    end
+
+    return {
+        Margin = outerMargin,
+        Width = width,
+        Height = height,
+        Gap = 8,
+        StackFromTop = stackFromTop,
+        IntroOffset = mobileMode and 34 or 50,
+    }
+end
+
+function NovaUI:RefreshNotificationLayout(instant)
+    local gui = self.ScreenGui
+    if not gui then return end
+
+    local holder = gui:FindFirstChild("NotifyHolder")
+    if not holder then return end
+
+    local layout = self:_getNotificationLayout()
+    local holderSize = UDim2.new(0, layout.Width, 0, layout.Height)
+    local holderPosition = UDim2.new(1, -layout.Margin, 0, layout.Margin)
+
+    if instant then
+        holder.Size = holderSize
+        holder.Position = holderPosition
+    else
+        animate(holder, TweenInfo.new(0.18, Enum.EasingStyle.Quint), {Size = holderSize, Position = holderPosition})
+    end
+
+    if layout.StackFromTop then
+        local yOffset = 0
+        for i = #self.Notifications, 1, -1 do
+            local n = self.Notifications[i]
+            if n and n.Parent then
+                local targetPosition = UDim2.new(0, 0, 0, yOffset)
+                if instant then
+                    n.Position = targetPosition
+                else
+                    animate(n, TweenInfo.new(0.28, Enum.EasingStyle.Quint), {Position = targetPosition})
+                end
+                local height = n.AbsoluteSize.Y > 0 and n.AbsoluteSize.Y or 60
+                yOffset = yOffset + height + layout.Gap
+            end
+        end
+    else
+        local yOffset = 0
+        for i = #self.Notifications, 1, -1 do
+            local n = self.Notifications[i]
+            if n and n.Parent then
+                local height = n.AbsoluteSize.Y > 0 and n.AbsoluteSize.Y or 60
+                yOffset = yOffset + height + layout.Gap
+                local targetPosition = UDim2.new(0, 0, 1, -yOffset)
+                if instant then
+                    n.Position = targetPosition
+                else
+                    animate(n, TweenInfo.new(0.28, Enum.EasingStyle.Quint), {Position = targetPosition})
+                end
+            end
+        end
+    end
+end
+
 function NovaUI:RegisterElement(obj, name, row, flagName)
     table.insert(self.Elements, {Obj = obj, Name = name:lower(), Row = row, Visible = true, Deps = {}, Flag = flagName})
     local ref = self.Elements[#self.Elements]
@@ -451,6 +540,7 @@ function NovaUI:Toggle(force)
     self.Hidden = (force ~= nil) and (not force) or (not self.Hidden)
     local tInfo = TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
     animate(self.MainScale, tInfo, {Scale = self.Hidden and 0 or 1})
+    self:RefreshNotificationLayout(true)
 
     if self.ToggleButton then
         local btnScale = self.ToggleButton:FindFirstChildOfClass("UIScale")
@@ -473,6 +563,7 @@ function NovaUI:Init()
         self.Hidden = false
         animate(self.MainScale, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
         if self.MainFrame then animate(self.MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {ImageTransparency = 0.5}) end
+        self:RefreshNotificationLayout(true)
     end
 end
 
@@ -600,7 +691,9 @@ function NovaUI:CreateWindow(cfg)
 
     -- Topbar
     local topbar = create("TextButton", {Parent = topbarShell, BackgroundTransparency = 1, Size = UDim2.new(1,0,1,0), Text = "", AutoButtonColor = false})
-    makeDraggable(topbar, shadow)
+    makeDraggable(topbar, shadow, function()
+        NovaUI:RefreshNotificationLayout(true)
+    end)
 
     local menuBtn = create("TextButton", {Parent = topbar, Position = UDim2.new(0,10,0.5,-iconButtonSize/2), Size = UDim2.new(0,iconButtonSize,0,iconButtonSize), BackgroundColor3 = self.Theme.Surface, BackgroundTransparency = self.Theme.ItemTransparency, Text = "≡", Font = Enum.Font.GothamBold, TextColor3 = self.Theme.Muted, TextSize = mobileMode and 20 or 18, AutoButtonColor = false})
     applyCorner(menuBtn, 10)
@@ -842,6 +935,7 @@ function NovaUI:CreateWindow(cfg)
         if self.CurrentWindow then
             self.CurrentWindow.DefaultSize = currentSize
         end
+        NovaUI:RefreshNotificationLayout(true)
     end
 
     local function refreshWindowLayout(instant)
@@ -877,6 +971,7 @@ function NovaUI:CreateWindow(cfg)
         if self.CurrentWindow then
             self.CurrentWindow.SidebarOpen = sidebarOpen
         end
+        NovaUI:RefreshNotificationLayout(true)
     end
 
     connect(menuBtn.MouseButton1Click, function()
@@ -907,6 +1002,9 @@ function NovaUI:CreateWindow(cfg)
     local resizeHandle
     connect(minBtn.MouseButton1Click, function()
         minimized = not minimized
+        if self.CurrentWindow then
+            self.CurrentWindow.Minimized = minimized
+        end
         if minimized then
             searchActive = false
             searchOverlay.Text = ""
@@ -918,6 +1016,7 @@ function NovaUI:CreateWindow(cfg)
         animate(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Size = minimized and UDim2.new(0, currentSize.X.Offset, 0, topbarHeight) + chromePadding or shadowSizeFromWindow(currentSize)})
         contentShell.Visible = not minimized; sidebarShell.Visible = not minimized
         resizeHandle.Visible = not minimized
+        NovaUI:RefreshNotificationLayout(true)
     end)
 
     connect(closeBtn.MouseButton1Click, function() NovaUI:Toggle(false) end)
@@ -1017,12 +1116,14 @@ function NovaUI:CreateWindow(cfg)
         TitleLabel = titleLbl,
         ConfigName = cfg.ConfigName or "default",
         SidebarOpen = sidebarOpen,
+        Minimized = minimized,
         MobileMode = mobileMode,
         ApplyWindowSize = applyWindowSize,
         CycleWindowSize = cycleSizeMode,
         SizeModes = sizeModes
     }
     setmetatable(self.CurrentWindow, {__index = WindowMethods})
+    self:RefreshNotificationLayout(true)
     return self.CurrentWindow
 end
 
@@ -2132,22 +2233,37 @@ local MAX_NOTIFS = 5
 
 function NovaUI:Notify(cfg)
     local gui = self:_ensureGui()
+    local layout = self:_getNotificationLayout()
     local holder = gui:FindFirstChild("NotifyHolder")
     if not holder then
-        holder = create("Frame", {Parent = gui, Name = "NotifyHolder", BackgroundTransparency = 1, Size = UDim2.new(0,300,1,-40), Position = UDim2.new(1,-20,0,20), AnchorPoint = Vector2.new(1,0)})
+        holder = create("Frame", {
+            Parent = gui,
+            Name = "NotifyHolder",
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, layout.Width, 0, layout.Height),
+            Position = UDim2.new(1, -layout.Margin, 0, layout.Margin),
+            AnchorPoint = Vector2.new(1,0)
+        })
     end
+    self:RefreshNotificationLayout(true)
 
     -- Dismiss oldest if over cap
     if #self.Notifications >= MAX_NOTIFS then
         local oldest = self.Notifications[1]
         if oldest and oldest.Parent then
-            animate(oldest, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {Position = UDim2.new(1,50,oldest.Position.Y.Scale,oldest.Position.Y.Offset), BackgroundTransparency = 1})
+            animate(oldest, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {Position = UDim2.new(1, layout.IntroOffset, oldest.Position.Y.Scale, oldest.Position.Y.Offset), BackgroundTransparency = 1})
             task.delay(0.25, function() if oldest.Parent then oldest:Destroy() end end)
             table.remove(self.Notifications, 1)
         end
     end
 
-    local msg = create("Frame", {Parent = holder, Size = UDim2.new(1,0,0,0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = self.Theme.Surface, Position = UDim2.new(1,50,1,0)})
+    local msg = create("Frame", {
+        Parent = holder,
+        Size = UDim2.new(1,0,0,0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundColor3 = self.Theme.Surface,
+        Position = UDim2.new(1, layout.IntroOffset, layout.StackFromTop and 0 or 1, 0)
+    })
     applyCorner(msg, 10); applyStroke(msg, self.Theme.Stroke, 1, 0.3)
     create("UIPadding", {Parent = msg, PaddingLeft = UDim.new(0,18), PaddingTop = UDim.new(0,12), PaddingBottom = UDim.new(0,12), PaddingRight = UDim.new(0,12)})
     local accent = create("Frame", {Parent = msg, Position = UDim2.new(0,-18,0,0), Size = UDim2.new(0,3,0,0), BackgroundColor3 = self.Theme.Accent}); applyCorner(accent, 4)
@@ -2173,29 +2289,23 @@ function NovaUI:Notify(cfg)
 
     table.insert(self.Notifications, msg)
 
-    local function updateQueue()
-        local yOffset = 0
-        for i = #self.Notifications, 1, -1 do
-            local n = self.Notifications[i]
-            local h = n.AbsoluteSize.Y > 0 and n.AbsoluteSize.Y or 60
-            yOffset = yOffset + h + 8
-            animate(n, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Position = UDim2.new(0,0,1,-yOffset)})
-        end
-    end
-
     closeNotif = function()
         if closed then return end; closed = true
-        animate(msg, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Position = UDim2.new(1,50,msg.Position.Y.Scale,msg.Position.Y.Offset), BackgroundTransparency = 1})
+        local closeLayout = self:_getNotificationLayout()
+        animate(msg, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Position = UDim2.new(1, closeLayout.IntroOffset, msg.Position.Y.Scale, msg.Position.Y.Offset), BackgroundTransparency = 1})
         for _, v in ipairs(msg:GetDescendants()) do if v:IsA("TextLabel") or v:IsA("TextButton") then pcall(function() animate(v, TweenInfo.new(0.3), {TextTransparency = 1, BackgroundTransparency = 1}) end) end end
         if msg:FindFirstChild("UIStroke") then animate(msg.UIStroke, TweenInfo.new(0.3), {Transparency = 1}) end
         task.wait(0.3)
         local idx = table.find(self.Notifications, msg)
         if idx then table.remove(self.Notifications, idx) end
         pcall(function() msg:Destroy() end)
-        updateQueue()
+        self:RefreshNotificationLayout()
     end
 
-    updateQueue(); task.delay(0.05, updateQueue)
+    self:RefreshNotificationLayout()
+    task.delay(0.05, function()
+        self:RefreshNotificationLayout()
+    end)
     task.delay(0.1, function() animate(accent, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Size = UDim2.new(0,3,1,0)}) end)
 
     if not cfg.Buttons then task.delay(cfg.Duration or 3, closeNotif) end
