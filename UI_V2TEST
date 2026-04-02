@@ -1,5 +1,10 @@
--- NovaUI Premium v2.5.5 (Default Sizing Cleanup)
+-- NovaUI Premium v2.5.6 (Theme Preserve Update)
+-- Changes from v2.5.6:
+--   [FIX] Preset/theme switching now preserves the user's current transparency settings
+--   [IMPROVE] Explicit transparency patches still apply normally without being blocked by preset logic
 -- Changes from v2.5.5:
+--   [FIX] Settings preset selector now respects developer-chosen preset defaults
+--   [FIX] Theme controls in the settings tab stay in sync when a preset is applied
 --   [IMPROVE] Reverted the hardcoded mobile startup size back to responsive sizing
 --   [FIX] Example-driven size confusion cleaned up so library defaults stay flexible
 -- Changes from v2.5.4:
@@ -62,12 +67,13 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local NovaUI = {
-    Version = "2.5.5",
+    Version = "2.5.6",
     Connections = {},
     Flags = {},
     Elements = {},
     ActiveTooltip = nil,
     ActiveContextMenu = nil,
+    ActivePreset = "Midnight",
     Theme = {
         Background  = Color3.fromRGB(10, 10, 14),
         Surface     = Color3.fromRGB(15, 15, 20),
@@ -380,8 +386,33 @@ end
 -- ─── Theme ───────────────────────────────────────────────────────────────────
 
 function NovaUI:SetTheme(patch)
-    if type(patch) == "string" and self.Presets[patch] then patch = self.Presets[patch] end
+    local presetName
+    local preserveTransparency = false
+    if type(patch) == "string" and self.Presets[patch] then
+        presetName = patch
+        patch = self.Presets[patch]
+        preserveTransparency = true
+    elseif type(patch) == "table" then
+        for name, preset in pairs(self.Presets) do
+            if patch == preset then
+                presetName = name
+                preserveTransparency = true
+                break
+            end
+        end
+    end
     if type(patch) ~= "table" then return end
+    if preserveTransparency then
+        local mergedPatch = {}
+        for k, v in pairs(patch) do
+            mergedPatch[k] = v
+        end
+        mergedPatch.WindowTransparency = self.Theme.WindowTransparency
+        mergedPatch.PanelTransparency = self.Theme.PanelTransparency
+        mergedPatch.SectionTransparency = self.Theme.SectionTransparency
+        mergedPatch.ItemTransparency = self.Theme.ItemTransparency
+        patch = mergedPatch
+    end
     for k, v in pairs(patch) do
         if self.Theme[k] ~= nil then
             self.Theme[k] = v
@@ -404,6 +435,9 @@ function NovaUI:SetTheme(patch)
                 end
             end
         end
+    end
+    if presetName then
+        self.ActivePreset = presetName
     end
     if patch.Accent then self.TooltipStroke.Color = patch.Accent end
 end
@@ -453,6 +487,7 @@ function NovaUI:Destroy()
     if self.ScreenGui then pcall(function() self.ScreenGui:Destroy() end) end
     self.ScreenGui = nil; self.MainFrame = nil; self.MainScale = nil
     self.CurrentWindow = nil; self.ToggleButton = nil
+    self.ActivePreset = "Midnight"
     self.ActiveTooltip = nil; self.Hidden = false
 end
 
@@ -2261,18 +2296,39 @@ function WindowMethods:CreateSettingsTab()
     for k in pairs(NovaUI.Presets) do table.insert(presetNames, k) end
     table.sort(presetNames)
 
-    themeSection:AddDropdown({
+    local presetDropdown
+    local accentPicker
+    local windowTransparencySlider
+    local panelTransparencySlider
+    local sectionTransparencySlider
+    local itemTransparencySlider
+
+    local function syncThemeControls(skipPresetSync)
+        if not skipPresetSync and presetDropdown and NovaUI.ActivePreset and table.find(presetNames, NovaUI.ActivePreset) then
+            presetDropdown.Set(NovaUI.ActivePreset, true)
+        end
+        if accentPicker then accentPicker.Set(NovaUI.Theme.Accent, true) end
+        if windowTransparencySlider then windowTransparencySlider.Set(NovaUI.Theme.WindowTransparency, true) end
+        if panelTransparencySlider then panelTransparencySlider.Set(NovaUI.Theme.PanelTransparency, true) end
+        if sectionTransparencySlider then sectionTransparencySlider.Set(NovaUI.Theme.SectionTransparency, true) end
+        if itemTransparencySlider then itemTransparencySlider.Set(NovaUI.Theme.ItemTransparency, true) end
+    end
+
+    presetDropdown = themeSection:AddDropdown({
         Name = "Preset",
         Options = presetNames,
-        Default = "Midnight",
-        Callback = function(v) NovaUI:SetTheme(v) end
+        Default = (NovaUI.ActivePreset and table.find(presetNames, NovaUI.ActivePreset) and NovaUI.ActivePreset) or "Midnight",
+        Callback = function(v)
+            NovaUI:SetTheme(v)
+            syncThemeControls(true)
+        end
     })
-    themeSection:AddColorPicker({
+    accentPicker = themeSection:AddColorPicker({
         Name = "Accent Color",
         Default = NovaUI.Theme.Accent,
         ApplyAccent = true
     })
-    themeSection:AddSlider({
+    windowTransparencySlider = themeSection:AddSlider({
         Name = "Window Transparency",
         Min = 0,
         Max = 0.5,
@@ -2280,7 +2336,7 @@ function WindowMethods:CreateSettingsTab()
         Default = NovaUI.Theme.WindowTransparency,
         Callback = function(v) NovaUI:SetTheme({WindowTransparency = v}) end
     })
-    themeSection:AddSlider({
+    panelTransparencySlider = themeSection:AddSlider({
         Name = "Panel Transparency",
         Min = 0,
         Max = 0.5,
@@ -2288,7 +2344,7 @@ function WindowMethods:CreateSettingsTab()
         Default = NovaUI.Theme.PanelTransparency,
         Callback = function(v) NovaUI:SetTheme({PanelTransparency = v}) end
     })
-    themeSection:AddSlider({
+    sectionTransparencySlider = themeSection:AddSlider({
         Name = "Section Transparency",
         Min = 0,
         Max = 0.65,
@@ -2296,7 +2352,7 @@ function WindowMethods:CreateSettingsTab()
         Default = NovaUI.Theme.SectionTransparency,
         Callback = function(v) NovaUI:SetTheme({SectionTransparency = v}) end
     })
-    themeSection:AddSlider({
+    itemTransparencySlider = themeSection:AddSlider({
         Name = "Item Transparency",
         Min = 0,
         Max = 0.75,
@@ -2304,6 +2360,7 @@ function WindowMethods:CreateSettingsTab()
         Default = NovaUI.Theme.ItemTransparency,
         Callback = function(v) NovaUI:SetTheme({ItemTransparency = v}) end
     })
+    syncThemeControls()
 
     -- Config section
     if NovaUI.SaveConfig then
